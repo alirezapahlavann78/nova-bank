@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  BANK
+  CASH
+  WALLET
+  CREDIT
+}
+
+enum Currency {
+  IRT
+  USD
+  EUR
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  email     String?  @unique
+  password  String?
+  firstName String?
+  lastName  String?
+  locale    String   @default("fa-IR")
+  timezone  String   @default("Asia/Tehran")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions  Session[]
+  devices   Device[]
+  accounts  Account[]
+
+  @@index([phone])
+  @@index([email])
+}
+
+model Session {
+  id             String   @id @default(uuid())
+  refreshTokenHash String @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  device Device?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Device {
+  id         String   @id @default(uuid())
+  deviceId   String
+  platform   String
+  name       String?
+  pushToken  String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?  @unique
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model Bank {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  nameEn    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+
+  @@index([code])
+}
+
+model Account {
+  id           String     @id @default(uuid())
+  userId       String
+  bankId       String?
+  name         String
+  type         AccountType
+  accountNumber String?
+  currency     Currency   @default(IRT)
+  balance      Int        @default(0)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank Bank?  @relation(fields: [bankId], references: [id])
+
+  @@index([userId])
+  @@index([userId, bankId])
+  @@index([userId, type])
+}
