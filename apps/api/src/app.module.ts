@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { PrismaService } from './prisma/prisma.service';
 
 @Module({
@@ -18,6 +20,8 @@ import { PrismaService } from './prisma/prisma.service';
     }),
     CommonModule,
     HealthModule,
+    AuthModule,
+    UsersModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

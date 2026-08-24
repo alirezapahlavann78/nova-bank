@@ -42,6 +42,25 @@ pnpm --filter @nova-bank/api dev
 pnpm --filter @nova-bank/mobile dev
 ```
 
+## Authentication
+
+The API uses JWT access tokens and opaque refresh tokens.
+
+- `POST /api/v1/auth/register` — Register new user
+- `POST /api/v1/auth/login` — Login with phone/password
+- `POST /api/v1/auth/refresh` — Refresh access token
+- `POST /api/v1/auth/logout` — Revoke current session
+- `GET /api/v1/users/me` — Get current user profile
+- `PATCH /api/v1/users/me` — Update profile
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and set required values. At minimum:
+
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — At least 32 characters
+- `REFRESH_TOKEN_SECRET` — At least 32 characters
+
 ## Tech Stack
 
 - **Mobile:** React Native, Expo, TypeScript, NativeWind, Expo Router, TanStack Query, Zustand, React Hook Form, Zod
