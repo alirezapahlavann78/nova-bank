@@ -106,8 +106,9 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid session');
     }
+    const accessToken = await this.tokenService.generateAccessToken(user.id);
     return this.buildResponse(user, {
-      accessToken: result.accessToken,
+      accessToken,
       refreshToken: dto.refreshToken,
     });
   }

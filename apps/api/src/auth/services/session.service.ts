@@ -75,7 +75,7 @@ export class SessionService {
         userId: session.userId,
         refreshTokenHash: newHash,
         expiresAt: newExpiresAt,
-        deviceId: session.deviceId,
+        device: session.device ? { connect: { id: session.device.id } } : undefined,
       },
       include: { device: true },
     });

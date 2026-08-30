@@ -13,6 +13,15 @@ export type ApiError = {
   };
 };
 
+export type ApiResponse<T = any> = {
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: Record<string, any>;
+  };
+};
+
 export type AuthTokensResponse = {
   user: {
     id: string;
