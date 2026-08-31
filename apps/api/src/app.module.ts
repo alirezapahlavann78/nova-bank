@@ -5,6 +5,19 @@ import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { AccountsModule } from './accounts/accounts.module';
+import { BanksModule } from './banks/banks.module';
+import { CardsModule } from './cards/cards.module';
+import { CategoriesModule } from './categories/categories.module';
+import { TransactionsModule } from './transactions/transactions.module';
+import { TransfersModule } from './transfers/transfers.module';
+import { RecurringTransactionsModule } from './recurring-transactions/recurring-transactions.module';
+import { BudgetsModule } from './budgets/budgets.module';
+import { GoalsModule } from './goals/goals.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
+import { ReportsModule } from './reports/reports.module';
+import { AIModule } from './ai/ai.module';
 import { PrismaService } from './prisma/prisma.service';
 
 @Module({
@@ -22,6 +35,19 @@ import { PrismaService } from './prisma/prisma.service';
     HealthModule,
     AuthModule,
     UsersModule,
+    AccountsModule,
+    BanksModule,
+    CardsModule,
+    CategoriesModule,
+    TransactionsModule,
+    TransfersModule,
+    RecurringTransactionsModule,
+    BudgetsModule,
+    GoalsModule,
+    NotificationsModule,
+    NotificationPreferencesModule,
+    ReportsModule,
+    AIModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],
