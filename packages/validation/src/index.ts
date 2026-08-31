@@ -148,3 +148,34 @@ export function normalizePhone(phone: string): string {
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
+
+export const chatRequestSchema = z.object({
+  message: z.string().min(1).max(4000),
+  conversationId: z.string().uuid().optional(),
+  agentId: z.string().uuid().optional(),
+});
+
+export const agentIdSchema = z.object({
+  agentId: z.string().uuid(),
+});
+
+export const conversationIdSchema = z.object({
+  conversationId: z.string().uuid(),
+});
+
+export const confirmationRequestSchema = z.object({
+  toolCallId: z.string().min(1),
+  conversationId: z.string().uuid().optional(),
+  confirmed: z.boolean(),
+});
+
+export const aiMessageRoleSchema = z.enum(['system', 'user', 'assistant', 'tool']);
+export const aiToolRiskLevelSchema = z.enum(['read', 'action_low', 'action_high']);
+export const aiToolConfirmationStateSchema = z.enum(['pending', 'confirmed', 'cancelled']);
+
+export const toolCallArgumentsSchema = z.record(z.any());
+
+export const aiPaginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(50),
+});

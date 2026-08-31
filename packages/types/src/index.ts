@@ -315,3 +315,197 @@ export interface NotificationPreferenceSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AIMessageRole = 'system' | 'user' | 'assistant' | 'tool';
+export type AIToolRiskLevel = 'read' | 'action_low' | 'action_high';
+export type AIToolConfirmationState = 'pending' | 'confirmed' | 'cancelled';
+export type AIAgentExecutionStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+export type AIToolExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface AIToolParameter {
+  name: string;
+  type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
+  description: string;
+  required: boolean;
+  enum?: string[];
+  items?: AIToolParameter;
+  properties?: AIToolParameter[];
+}
+
+export interface AIToolDefinition {
+  name: string;
+  description: string;
+  parameters: AIToolParameter[];
+  riskLevel: AIToolRiskLevel;
+  confirmationRequired: boolean;
+  permission: string;
+  userScoping: boolean;
+}
+
+export interface AIToolCall {
+  id: string;
+  toolName: string;
+  arguments: Record<string, any>;
+  confirmationState?: AIToolConfirmationState;
+}
+
+export interface AIToolResult {
+  toolCallId: string;
+  toolName: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+  confirmationState: AIToolConfirmationState;
+}
+
+export interface AISystemInstructions {
+  basePrompt: string;
+  riskGuidelines: string;
+  confirmationProtocol: string;
+}
+
+export interface AIAgentCapability {
+  name: string;
+  description: string;
+  tools: string[];
+}
+
+export interface AIAgentMetadata {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  isEnabled: boolean;
+  capabilities: AIAgentCapability[];
+  modelConfig: {
+    provider: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  };
+  systemInstructions: AISystemInstructions;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIProviderResponse {
+  content: string;
+  toolCalls: AIToolCall[];
+  usage: AIUsageMetadata;
+  provider: string;
+  model: string;
+}
+
+export interface AIUsageMetadata {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  provider?: string;
+}
+
+export interface AIChatRequestDto {
+  message: string;
+  conversationId?: string;
+  agentId?: string;
+}
+
+export interface AIChatRequest {
+  message: string;
+  conversationId?: string;
+  agentId?: string;
+}
+
+export interface AIConfirmationRequestDto {
+  toolCallId: string;
+  conversationId?: string;
+  confirmed: boolean;
+}
+
+export interface AIConfirmationRequest {
+  toolCallId: string;
+  conversationId?: string;
+  confirmed: boolean;
+}
+
+export interface AIToolExecutionSummary {
+  toolName: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+export interface AIChatResponse {
+  content: string;
+  conversationId: string;
+  agent: {
+    id: string;
+    name: string;
+    version: string;
+  };
+  toolExecutions: AIToolExecutionSummary[];
+  pendingConfirmations: AIToolCall[];
+  usage?: AIUsageMetadata;
+  isComplete: boolean;
+}
+
+export interface AIToolExecutionLog {
+  id: string;
+  toolName: string;
+  riskLevel: AIToolRiskLevel;
+  status: AIToolExecutionStatus;
+  confirmationState: AIToolConfirmationState;
+  durationMs?: number;
+  input: Record<string, any>;
+  output?: any;
+  error?: string;
+}
+
+export interface AIConversationSummary {
+  id: string;
+  agentId: string;
+  agentName: string;
+  title: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  isActive: boolean;
+  messageCount: number;
+  lastMessageAt: string | null;
+}
+
+export interface AIMessageSummary {
+  id: string;
+  conversationId: string;
+  role: AIMessageRole;
+  content: string | null;
+  toolCalls: AIToolCall[];
+  toolResults: AIToolResult[];
+  tokenUsage: number;
+  createdAt: string;
+}
+
+export interface AIAuditLogEntry {
+  requestId: string;
+  userId: string;
+  agentId: string;
+  model: string;
+  timestamp: string;
+  toolCalls: AIToolCallLog[];
+  toolResults: AIToolResultLog[];
+  executionDurationMs: number;
+  success: boolean;
+  error?: string;
+  confirmationState: AIToolConfirmationState;
+}
+
+export interface AIToolCallLog {
+  toolName: string;
+  arguments: Record<string, any>;
+  confirmationState: AIToolConfirmationState;
+}
+
+export interface AIToolResultLog {
+  toolName: string;
+  success: boolean;
+  confirmationState: AIToolConfirmationState;
+  durationMs?: number;
+}
