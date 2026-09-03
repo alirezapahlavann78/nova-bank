@@ -7,6 +7,7 @@ export const createGoalSchema = z.object({
   targetAmount: z.coerce.number().int().positive(),
   currency: z.enum(['IRT', 'USD', 'EUR']).default('IRT'),
   targetDate: z.string().datetime(),
+  goalType: z.enum(['SAVINGS', 'INVESTMENT']).default('SAVINGS'),
 });
 
 export class CreateGoalDto {
@@ -15,4 +16,5 @@ export class CreateGoalDto {
   @IsInt() targetAmount!: number;
   @IsEnum(['IRT', 'USD', 'EUR']) currency?: string;
   @IsString() targetDate!: string;
+  @IsEnum(['SAVINGS', 'INVESTMENT']) @IsOptional() goalType?: string;
 }

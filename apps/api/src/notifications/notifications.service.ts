@@ -122,4 +122,91 @@ export class NotificationsService {
       where: { userId, isRead: false },
     });
   }
+
+  async checkPortfolioMovementNotifications(userId: string, portfolioValue: number, previousValue?: number) {
+    const preferences = await this.getPreferences(userId);
+    if (!preferences.pushEnabled) return;
+
+    if (previousValue !== undefined && previousValue > 0) {
+      const changePercent = ((portfolioValue - previousValue) / previousValue) * 100;
+
+      if (Math.abs(changePercent) >= 10) {
+        const hasRecent = await this.hasNotification(
+          userId,
+          changePercent > 0 ? 'UNREALIZED_GAIN' : 'UNREALIZED_LOSS',
+          'type',
+          changePercent > 0 ? 'UNREALIZED_GAIN' : 'UNREALIZED_LOSS',
+        );
+        if (!hasRecent) {
+          const type = changePercent > 0 ? 'UNREALIZED_GAIN' : 'UNREALIZED_LOSS';
+          const title = changePercent > 0 ? 'سود قابل توجه در پرتفوی' : 'زیان قابل توجه در پرتفوی';
+          const body = changePercent > 0
+            ? `پرتفوی شما ${Math.round(changePercent)}% افزایش یافته است.`
+            : `پرتفوی شما ${Math.round(Math.abs(changePercent))}% کاهش یافته است.`;
+          await this.createNotification(userId, type as any, title, body, {
+            portfolioValue,
+            changePercent: Math.round(changePercent * 100) / 100,
+          });
+        }
+      }
+    }
+  }
+
+  async checkInvestmentGoalMilestones(userId: string, investmentGoals: any[]) {
+    const preferences = await this.getPreferences(userId);
+    if (!preferences.goalAlerts) return;
+
+    for (const goal of investmentGoals) {
+      const percentage = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+
+      if (percentage >= 100 && !goal.isCompleted) {
+        const hasCompleted = await this.hasNotification(userId, 'INVESTMENT_GOAL_COMPLETED', 'goalId', goal.id);
+        if (!hasCompleted) {
+          await this.createNotification(
+            userId,
+            'INVESTMENT_GOAL_COMPLETED',
+            'هدف سرمایه‌گذاری تکمیل شد',
+            `تبریک! هدف سرمایه‌گذاری "${goal.name}" با موفقیت تکمیل شد.`,
+            { goalId: goal.id, goalType: 'INVESTMENT' },
+          );
+        }
+        continue;
+      }
+
+      const milestones = [25, 50, 75];
+      for (const milestone of milestones) {
+        if (percentage >= milestone) {
+          const hasMilestone = await this.hasNotification(
+            userId,
+            'INVESTMENT_GOAL_MILESTONE',
+            'goalId',
+            goal.id,
+          );
+          if (!hasMilestone) {
+            await this.createNotification(
+              userId,
+              'INVESTMENT_GOAL_MILESTONE',
+              'دستاورد هدف سرمایه‌گذاری',
+              `شما ${milestone}% از هدف سرمایه‌گذاری "${goal.name}" را تکمیل کردید.`,
+              { goalId: goal.id, goalType: 'INVESTMENT', milestone },
+            );
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  async checkDividendNotifications(userId: string, transaction: any) {
+    const preferences = await this.getPreferences(userId);
+    if (!preferences.transactionAlerts) return;
+
+    await this.createNotification(
+      userId,
+      'DIVIDEND_RECEIVED',
+      'دریافت سود',
+      `سود ${transaction.amount} ${transaction.currency} از دارایی دریافت شد.`,
+      { transactionId: transaction.id, assetId: transaction.assetId },
+    );
+  }
 }

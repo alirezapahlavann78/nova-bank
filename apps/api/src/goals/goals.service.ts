@@ -17,6 +17,15 @@ export class GoalsService {
     return goals.map((goal: any) => this.mapGoal(goal));
   }
 
+  async findAllByType(userId: string, goalType: string) {
+    const goals = await this.prisma.goal.findMany({
+      where: { userId, isActive: true, goalType: goalType as any },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return goals.map((goal: any) => this.mapGoal(goal));
+  }
+
   async findOne(id: string, userId: string) {
     const goal = await this.prisma.goal.findFirst({ where: { id, userId } });
     if (!goal) throw new NotFoundException('Goal not found');
@@ -33,6 +42,7 @@ export class GoalsService {
         targetAmount: dto.targetAmount,
         currency: dto.currency as any,
         targetDate,
+        goalType: dto.goalType as any,
       },
     });
   }
@@ -47,6 +57,7 @@ export class GoalsService {
     if (dto.targetAmount !== undefined) data.targetAmount = dto.targetAmount;
     if (dto.targetDate !== undefined) data.targetDate = new Date(dto.targetDate);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.goalType !== undefined) data.goalType = dto.goalType;
 
     return this.prisma.goal.update({ where: { id }, data });
   }
@@ -135,6 +146,7 @@ export class GoalsService {
       targetDate: goal.targetDate.toISOString(),
       isCompleted: goal.isCompleted,
       isActive: goal.isActive,
+      goalType: goal.goalType,
       createdAt: goal.createdAt.toISOString(),
       updatedAt: goal.updatedAt.toISOString(),
     };

@@ -8,6 +8,7 @@ export const updateGoalSchema = z.object({
   currency: z.enum(['IRT', 'USD', 'EUR']).optional(),
   targetDate: z.string().datetime().optional(),
   isActive: z.boolean().optional(),
+  goalType: z.enum(['SAVINGS', 'INVESTMENT']).optional(),
 });
 
 export class UpdateGoalDto {
@@ -17,4 +18,5 @@ export class UpdateGoalDto {
   @IsEnum(['IRT', 'USD', 'EUR']) @IsOptional() currency?: string;
   @IsString() @IsOptional() targetDate?: string;
   @IsBoolean() @IsOptional() isActive?: boolean;
+  @IsEnum(['SAVINGS', 'INVESTMENT']) @IsOptional() goalType?: string;
 }
