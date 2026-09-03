@@ -58,6 +58,12 @@ enum NotificationType {
   TRANSACTION_CREATED
   TRANSFER_COMPLETED
   SYSTEM
+  INVESTMENT_GOAL_MILESTONE
+  INVESTMENT_GOAL_COMPLETED
+  PORTFOLIO_MOVEMENT
+  DIVIDEND_RECEIVED
+  UNREALIZED_LOSS
+  UNREALIZED_GAIN
 }
 
 model User {
@@ -85,6 +91,11 @@ model User {
   notifications          Notification[]
   notificationPreference NotificationPreference?
   aiConversations        AIConversation[]
+  investmentAccounts     InvestmentAccount[]
+  holdings               Holding[]
+  investmentTransactions InvestmentTransaction[]
+  watchlists             Watchlist[]
+  watchlistItems         WatchlistItem[]
 
   @@index([phone])
   @@index([email])
@@ -312,6 +323,7 @@ model Goal {
   targetDate    DateTime
   isCompleted   Boolean    @default(false)
   isActive      Boolean    @default(true)
+  goalType      GoalType   @default(SAVINGS)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -319,6 +331,11 @@ model Goal {
 
   @@index([userId])
   @@index([userId, isActive])
+}
+
+enum GoalType {
+  SAVINGS
+  INVESTMENT
 }
 
 model Notification {
@@ -466,4 +483,173 @@ model AIToolExecution {
   @@index([executionId])
   @@index([toolName])
   @@index([confirmationState])
+}
+
+enum InvestmentAccountType {
+  BROKERAGE
+  RETIREMENT
+  SAVINGS_INVESTMENT
+  OTHER
+}
+
+enum InvestmentAccountStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AssetType {
+  STOCK
+  ETF
+  BOND
+  MUTUAL_FUND
+  CRYPTO
+  CASH
+  OTHER
+}
+
+enum InvestmentTransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  DEPOSIT
+  WITHDRAWAL
+  FEE
+  INTEREST
+  OTHER
+}
+
+model InvestmentAccount {
+  id            String                  @id @default(uuid())
+  userId        String
+  accountNumber String?
+  brokerName    String?
+  accountType   InvestmentAccountType   @default(BROKERAGE)
+  baseCurrency  Currency                @default(USD)
+  cashBalance   Float                   @default(0)
+  totalValue    Float                   @default(0)
+  status        InvestmentAccountStatus @default(ACTIVE)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings           Holding[]
+  transactions       InvestmentTransaction[]
+  watchlistItems     WatchlistItem[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, accountType])
+}
+
+model Asset {
+  id            String     @id @default(uuid())
+  symbol        String
+  name          String
+  assetType     AssetType
+  exchange      String?
+  currency      Currency
+  isin          String?    @unique
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  holdings            Holding[]
+  investmentTransactions InvestmentTransaction[]
+  watchlistItems      WatchlistItem[]
+
+  @@index([symbol])
+  @@index([assetType])
+  @@index([isActive])
+  @@unique([symbol, exchange])
+}
+
+model Holding {
+  id              String   @id @default(uuid())
+  userId          String
+  accountId       String
+  assetId         String
+  quantity        Float
+  averageCost     Float
+  totalCost        Float
+  currentValue    Float
+  unrealizedPL     Float
+  unrealizedPLPercentage Float
+  lastUpdated     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     InvestmentAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  asset       Asset                   @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([userId, accountId])
+  @@index([userId, assetId])
+  @@index([userId, accountId, assetId])
+  @@unique([userId, accountId, assetId])
+}
+
+model InvestmentTransaction {
+  id              String                   @id @default(uuid())
+  userId          String
+  accountId       String
+  assetId         String?
+  transactionType InvestmentTransactionType
+  quantity        Float?
+  price           Float?
+  amount          Float
+  fees            Float                    @default(0)
+  currency        Currency                 @default(USD)
+  transactionDate DateTime
+  reference       String?
+  notes           String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account   InvestmentAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  asset     Asset?             @relation(fields: [assetId], references: [id])
+
+  @@index([userId])
+  @@index([userId, accountId])
+  @@index([userId, transactionDate])
+  @@index([userId, transactionType])
+}
+
+model Watchlist {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       WatchlistItem[]
+
+  @@index([userId])
+  @@index([userId, isDefault])
+  @@unique([userId, name])
+}
+
+model WatchlistItem {
+  id          String   @id @default(uuid())
+  userId      String
+  watchlistId String
+  assetId     String
+  accountId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  watchlist   Watchlist         @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  asset       Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  account     InvestmentAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, watchlistId])
+  @@index([userId, assetId])
+  @@unique([userId, watchlistId, assetId])
 }
