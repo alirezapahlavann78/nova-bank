@@ -7,6 +7,12 @@ import { NotificationsService } from '../src/notifications/notifications.service
 import { ReportsService } from '../src/reports/reports.service';
 import { TransfersService } from '../src/transfers/transfers.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { InvestmentAccountsService } from '../src/investments/investment-accounts.service';
+import { AssetsService } from '../src/investments/assets.service';
+import { HoldingsService } from '../src/investments/holdings.service';
+import { InvestmentTransactionsService } from '../src/investments/investment-transactions.service';
+import { PortfolioService } from '../src/investments/portfolio.service';
+import { WatchlistsService } from '../src/investments/watchlists.service';
 import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
@@ -30,6 +36,12 @@ describe('ToolManager Security', () => {
     getGoalProgress: jest.fn(),
   };
   const mockTransfersService = { create: jest.fn() };
+  const mockInvestmentAccountsService = { findAll: jest.fn(), findOne: jest.fn() };
+  const mockAssetsService = { findAll: jest.fn(), findOne: jest.fn() };
+  const mockHoldingsService = { findAll: jest.fn(), findOne: jest.fn() };
+  const mockInvestmentTransactionsService = { findAll: jest.fn(), create: jest.fn() };
+  const mockPortfolioService = { getOverview: jest.fn(), getHoldings: jest.fn() };
+  const mockWatchlistsService = { findAll: jest.fn(), create: jest.fn() };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -43,6 +55,12 @@ describe('ToolManager Security', () => {
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: ReportsService, useValue: mockReportsService },
         { provide: TransfersService, useValue: mockTransfersService },
+        { provide: InvestmentAccountsService, useValue: mockInvestmentAccountsService },
+        { provide: AssetsService, useValue: mockAssetsService },
+        { provide: HoldingsService, useValue: mockHoldingsService },
+        { provide: InvestmentTransactionsService, useValue: mockInvestmentTransactionsService },
+        { provide: PortfolioService, useValue: mockPortfolioService },
+        { provide: WatchlistsService, useValue: mockWatchlistsService },
       ],
     }).compile();
 
