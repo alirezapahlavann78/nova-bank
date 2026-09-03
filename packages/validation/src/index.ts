@@ -179,3 +179,75 @@ export const aiPaginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(50),
 });
+
+export const investmentAccountTypeSchema = z.enum(['BROKERAGE', 'RETIREMENT', 'SAVINGS_INVESTMENT', 'OTHER']);
+export const investmentAccountStatusSchema = z.enum(['ACTIVE', 'SUSPENDED', 'CLOSED']);
+export const assetTypeSchema = z.enum(['STOCK', 'ETF', 'BOND', 'MUTUAL_FUND', 'CRYPTO', 'CASH', 'OTHER']);
+export const investmentTransactionTypeSchema = z.enum(['BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL', 'FEE', 'INTEREST', 'OTHER']);
+
+export const createInvestmentAccountSchema = z.object({
+  accountNumber: z.string().optional(),
+  brokerName: z.string().min(1).max(100).optional(),
+  accountType: z.enum(['BROKERAGE', 'RETIREMENT', 'SAVINGS_INVESTMENT', 'OTHER']).default('BROKERAGE'),
+  baseCurrency: z.enum(['IRT', 'USD', 'EUR']).default('USD'),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'CLOSED']).default('ACTIVE'),
+  cashBalance: z.coerce.number().nonnegative().optional(),
+  totalValue: z.coerce.number().nonnegative().optional(),
+});
+
+export const updateInvestmentAccountSchema = z.object({
+  accountNumber: z.string().optional(),
+  brokerName: z.string().min(1).max(100).optional(),
+  accountType: z.enum(['BROKERAGE', 'RETIREMENT', 'SAVINGS_INVESTMENT', 'OTHER']).optional(),
+  baseCurrency: z.enum(['IRT', 'USD', 'EUR']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'CLOSED']).optional(),
+  cashBalance: z.coerce.number().nonnegative().optional(),
+  totalValue: z.coerce.number().nonnegative().optional(),
+});
+
+export const assetFiltersSchema = z.object({
+  symbol: z.string().optional(),
+  assetType: z.enum(['STOCK', 'ETF', 'BOND', 'MUTUAL_FUND', 'CRYPTO', 'CASH', 'OTHER']).optional(),
+  isActive: z.boolean().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+});
+
+export const holdingFiltersSchema = z.object({
+  accountId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(50),
+});
+
+export const transactionDateRangeSchema = z.object({
+  fromDate: z.string().datetime().optional(),
+  toDate: z.string().datetime().optional(),
+});
+
+export const investmentTransactionFiltersSchema = z.object({
+  accountId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
+  transactionType: z.enum(['BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL', 'FEE', 'INTEREST', 'OTHER']).optional(),
+  fromDate: z.string().datetime().optional(),
+  toDate: z.string().datetime().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(50),
+});
+
+export const createWatchlistSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+export const updateWatchlistSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+export const addWatchlistItemSchema = z.object({
+  assetId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
+});

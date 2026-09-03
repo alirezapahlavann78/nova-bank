@@ -9,14 +9,25 @@ export type BankId = string;
 export type CardId = string;
 export type NotificationId = string;
 export type SubscriptionId = string;
+export type InvestmentAccountId = string;
+export type AssetId = string;
+export type HoldingId = string;
+export type InvestmentTransactionId = string;
+export type WatchlistId = string;
+export type WatchlistItemId = string;
 
 export type Currency = 'IRT' | 'USD' | 'EUR';
 export type TransactionType = 'income' | 'expense' | 'transfer';
 export type AccountType = 'cash' | 'bank' | 'wallet' | 'credit';
 export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly';
 export type GoalStatus = 'active' | 'completed' | 'paused';
+export type GoalType = 'SAVINGS' | 'INVESTMENT';
 export type SubscriptionTier = 'FREE' | 'SMART' | 'PRO' | 'BUSINESS';
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type InvestmentAccountType = 'BROKERAGE' | 'RETIREMENT' | 'SAVINGS_INVESTMENT' | 'OTHER';
+export type InvestmentAccountStatus = 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+export type AssetType = 'STOCK' | 'ETF' | 'BOND' | 'MUTUAL_FUND' | 'CRYPTO' | 'CASH' | 'OTHER';
+export type InvestmentTransactionType = 'BUY' | 'SELL' | 'DIVIDEND' | 'DEPOSIT' | 'WITHDRAWAL' | 'FEE' | 'INTEREST' | 'OTHER';
 
 export interface PaginationQuery {
   page: number;
@@ -228,10 +239,13 @@ export interface GoalSummary {
   description?: string;
   targetAmount: number;
   currentAmount: number;
+  remaining: number;
+  percentageComplete: number;
   currency: Currency;
   targetDate: string;
   isCompleted: boolean;
   isActive: boolean;
+  goalType: 'SAVINGS' | 'INVESTMENT';
   createdAt: string;
   updatedAt: string;
 }
@@ -508,4 +522,161 @@ export interface AIToolResultLog {
   success: boolean;
   confirmationState: AIToolConfirmationState;
   durationMs?: number;
+}
+
+export interface InvestmentAccountSummary {
+  id: string;
+  userId: string;
+  accountNumber?: string;
+  brokerName?: string;
+  accountType: InvestmentAccountType;
+  baseCurrency: Currency;
+  cashBalance: number;
+  totalValue: number;
+  status: InvestmentAccountStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvestmentAccountDetail extends InvestmentAccountSummary {
+  holdings?: HoldingSummary[];
+}
+
+export interface AssetSummary {
+  id: string;
+  symbol: string;
+  name: string;
+  assetType: AssetType;
+  exchange?: string;
+  currency: Currency;
+  isin?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetDetail extends AssetSummary {
+  currentPrice?: number;
+  previousPrice?: number;
+  priceTimestamp?: string;
+}
+
+export interface HoldingSummary {
+  id: string;
+  userId: string;
+  accountId: string;
+  assetId: string;
+  quantity: number;
+  averageCost: number;
+  totalCost: number;
+  currentValue: number;
+  unrealizedPL: number;
+  unrealizedPLPercentage: number;
+  lastUpdated: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HoldingDetail extends HoldingSummary {
+  asset?: AssetSummary;
+  account?: InvestmentAccountSummary;
+}
+
+export interface InvestmentTransactionSummary {
+  id: string;
+  userId: string;
+  accountId: string;
+  assetId?: string;
+  transactionType: InvestmentTransactionType;
+  quantity?: number;
+  price?: number;
+  amount: number;
+  fees: number;
+  currency: Currency;
+  transactionDate: string;
+  reference?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvestmentTransactionDetail extends InvestmentTransactionSummary {
+  asset?: AssetSummary;
+  account?: InvestmentAccountSummary;
+}
+
+export interface WatchlistSummary {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WatchlistDetail extends WatchlistSummary {
+  items?: WatchlistItemDetail[];
+}
+
+export interface WatchlistItemDetail {
+  id: string;
+  userId: string;
+  watchlistId: string;
+  assetId: string;
+  accountId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvestmentGoalSummary {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  targetAmount: number;
+  currentAmount: number;
+  currency: Currency;
+  targetDate: string;
+  isCompleted: boolean;
+  isActive: boolean;
+  goalType: 'SAVINGS' | 'INVESTMENT';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortfolioOverview {
+  totalPortfolioValue: number;
+  totalInvestedCapital: number;
+  totalCashBalance: number;
+  totalUnrealizedPL: number;
+  returnPercentage: number;
+}
+
+export interface AssetAllocationItem {
+  asset: { id: string; symbol: string; name: string; assetType: AssetType };
+  value: number;
+  percentage: number;
+}
+
+export interface PortfolioPerformancePoint {
+  date: string;
+  totalValue: number;
+  dailyChange: number;
+  cumulativeReturn: number;
+}
+
+export interface PortfolioPerformanceResponse {
+  points: PortfolioPerformancePoint[];
+  startDate: string;
+  endDate: string;
+}
+
+export interface AIAgentSummary {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  isEnabled: boolean;
+  capabilities: AIAgentCapability[];
 }
