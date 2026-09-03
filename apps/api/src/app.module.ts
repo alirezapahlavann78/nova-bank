@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { ReportsModule } from './reports/reports.module';
 import { AIModule } from './ai/ai.module';
+import { InvestmentsModule } from './investments/investments.module';
 import { PrismaService } from './prisma/prisma.service';
 
 @Module({
@@ -48,6 +49,7 @@ import { PrismaService } from './prisma/prisma.service';
     NotificationPreferencesModule,
     ReportsModule,
     AIModule,
+    InvestmentsModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

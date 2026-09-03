@@ -7,6 +7,7 @@ import { GoalsModule } from '../../goals/goals.module';
 import { NotificationsModule } from '../../notifications/notifications.module';
 import { ReportsModule } from '../../reports/reports.module';
 import { TransfersModule } from '../../transfers/transfers.module';
+import { InvestmentsModule } from '../../investments/investments.module';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
@@ -18,6 +19,7 @@ import { PrismaService } from '../../prisma/prisma.service';
     NotificationsModule,
     ReportsModule,
     TransfersModule,
+    InvestmentsModule,
   ],
   providers: [ToolManagerService, PrismaService],
   exports: [ToolManagerService],

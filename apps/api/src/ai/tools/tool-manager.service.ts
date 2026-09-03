@@ -7,6 +7,12 @@ import { GoalsService } from '../../goals/goals.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { ReportsService } from '../../reports/reports.service';
 import { TransfersService } from '../../transfers/transfers.service';
+import { InvestmentAccountsService } from '../../investments/investment-accounts.service';
+import { AssetsService } from '../../investments/assets.service';
+import { HoldingsService } from '../../investments/holdings.service';
+import { InvestmentTransactionsService } from '../../investments/investment-transactions.service';
+import { PortfolioService } from '../../investments/portfolio.service';
+import { WatchlistsService } from '../../investments/watchlists.service';
 import { ToolRegistration, ToolExecutionContext, ToolExecutionResult } from './interfaces/tool-execution-context.interface';
 
 @Injectable()
@@ -23,6 +29,12 @@ export class ToolManagerService {
     private readonly notificationsService: NotificationsService,
     private readonly reportsService: ReportsService,
     private readonly transfersService: TransfersService,
+    private readonly investmentAccountsService: InvestmentAccountsService,
+    private readonly assetsService: AssetsService,
+    private readonly holdingsService: HoldingsService,
+    private readonly investmentTransactionsService: InvestmentTransactionsService,
+    private readonly portfolioService: PortfolioService,
+    private readonly watchlistsService: WatchlistsService,
   ) {
     this.registerTools();
   }
@@ -238,6 +250,125 @@ export class ToolManagerService {
         riskLevel: 'action_low',
         confirmationRequired: true,
         permission: 'financial:action:notification',
+        userScoping: true,
+      },
+      {
+        name: 'getInvestmentAccounts',
+        description: 'Get all investment accounts for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['ACTIVE', 'SUSPENDED', 'CLOSED'], description: 'Filter by account status' },
+          },
+        },
+        handler: this.toolGetInvestmentAccounts.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:accounts',
+        userScoping: true,
+      },
+      {
+        name: 'getPortfolio',
+        description: 'Get portfolio overview including total value, invested capital, and P/L',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetPortfolio.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:portfolio',
+        userScoping: true,
+      },
+      {
+        name: 'getHoldings',
+        description: 'Get holdings for the authenticated user with optional filters',
+        parameters: {
+          type: 'object',
+          properties: {
+            accountId: { type: 'string', description: 'Filter by investment account UUID' },
+            assetId: { type: 'string', description: 'Filter by asset UUID' },
+          },
+        },
+        handler: this.toolGetHoldings.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:holdings',
+        userScoping: true,
+      },
+      {
+        name: 'getInvestmentTransactions',
+        description: 'List investment transactions for the authenticated user with optional filters',
+        parameters: {
+          type: 'object',
+          properties: {
+            accountId: { type: 'string', description: 'Filter by investment account UUID' },
+            assetId: { type: 'string', description: 'Filter by asset UUID' },
+            transactionType: { type: 'string', enum: ['BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL', 'FEE', 'INTEREST', 'OTHER'], description: 'Filter by transaction type' },
+            fromDate: { type: 'string', format: 'date-time', description: 'Start date ISO string' },
+            toDate: { type: 'string', format: 'date-time', description: 'End date ISO string' },
+            limit: { type: 'integer', description: 'Max results (default 20)', default: 20 },
+          },
+        },
+        handler: this.toolGetInvestmentTransactions.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:transactions',
+        userScoping: true,
+      },
+      {
+        name: 'getPortfolioPerformance',
+        description: 'Get portfolio performance over time with date range support',
+        parameters: {
+          type: 'object',
+          properties: {
+            fromDate: { type: 'string', format: 'date-time', description: 'Start date ISO string' },
+            toDate: { type: 'string', format: 'date-time', description: 'End date ISO string' },
+          },
+        },
+        handler: this.toolGetPortfolioPerformance.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:performance',
+        userScoping: true,
+      },
+      {
+        name: 'getAssetAllocation',
+        description: 'Get asset allocation breakdown by asset, asset type, and account',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetAssetAllocation.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:allocation',
+        userScoping: true,
+      },
+      {
+        name: 'getWatchlists',
+        description: 'Get all watchlists for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetWatchlists.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:watchlists',
+        userScoping: true,
+      },
+      {
+        name: 'getInvestmentGoals',
+        description: 'Get all investment goals for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetInvestmentGoals.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'investment:read:goals',
         userScoping: true,
       },
     ];
@@ -479,5 +610,60 @@ export class ToolManagerService {
   private async toolMarkNotificationRead(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
     const result = await this.notificationsService.markAsRead(args.notificationId, context.userId);
     return { data: result };
+  }
+
+  private async toolGetInvestmentAccounts(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const query: any = {};
+    if (args.status) query.status = args.status;
+    const result = await this.investmentAccountsService.findAll(context.userId, query);
+    return { data: result };
+  }
+
+  private async toolGetPortfolio(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.portfolioService.getOverview(context.userId);
+    return { data: result };
+  }
+
+  private async toolGetHoldings(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const query: any = {};
+    if (args.accountId) query.accountId = args.accountId;
+    if (args.assetId) query.assetId = args.assetId;
+    const result = await this.portfolioService.getHoldings(context.userId, query);
+    return { data: result };
+  }
+
+  private async toolGetInvestmentTransactions(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const query: any = {};
+    if (args.accountId) query.accountId = args.accountId;
+    if (args.assetId) query.assetId = args.assetId;
+    if (args.transactionType) query.transactionType = args.transactionType;
+    if (args.fromDate) query.fromDate = args.fromDate;
+    if (args.toDate) query.toDate = args.toDate;
+    if (args.limit) query.limit = args.limit;
+    const result = await this.investmentTransactionsService.findAll(context.userId, query);
+    return { data: result };
+  }
+
+  private async toolGetPortfolioPerformance(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const query: any = {};
+    if (args.fromDate) query.fromDate = args.fromDate;
+    if (args.toDate) query.toDate = args.toDate;
+    const result = await this.portfolioService.getPerformance(context.userId, query);
+    return { data: result };
+  }
+
+  private async toolGetAssetAllocation(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.portfolioService.getAssetAllocation(context.userId);
+    return { data: result };
+  }
+
+  private async toolGetWatchlists(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.watchlistsService.findAll(context.userId, {});
+    return { data: result };
+  }
+
+  private async toolGetInvestmentGoals(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const goals = await this.goalsService.findAllByType(context.userId, 'INVESTMENT');
+    return { data: goals };
   }
 }

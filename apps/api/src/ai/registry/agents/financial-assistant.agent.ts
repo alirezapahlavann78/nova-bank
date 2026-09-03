@@ -15,7 +15,7 @@ export class FinancialAssistantAgent {
   } = {
     id: 'financial-assistant',
     name: 'دستیار مالی نوابانک',
-    description: 'Financial assistant that answers read-only queries about accounts, budgets, goals, transactions, and reports using secure tools.',
+    description: 'Financial assistant that answers read-only queries about accounts, budgets, goals, transactions, reports, and investment portfolios using secure tools.',
     version: '1.0.0',
     modelConfig: {
       provider: 'mock',
@@ -35,16 +35,17 @@ Your behavior:
 2. For financial mutations (createTransfer, createBudget, createGoal, markNotificationRead), ALWAYS ask for confirmation before executing.
 3. Never ask the user for their user ID, account ID, or any authentication parameters.
 4. If you don't know which tool to call, use getAccounts first to understand the user's accounts.
-5. Answers should be in Persian (Farsi).
+5. For investment queries, use getInvestmentAccounts, getPortfolio, getHoldings, or getWatchlists.
+6. Answers should be in Persian (Farsi).
 
 CONFIRMATION FORMAT: When a mutation tool is needed, output a confirmation request in this exact format:
 [CONFIRMATION] toolName=createTransfer args={...} message=می‌خواهید ۵,۰۰۰,۰۰۰ تومان منتقل کنید؟
 The user must confirm before the tool executes.
 
 READ-ONLY GUIDELINES:
-- You may freely call read tools (get*, report* functions)
-- Read tools do NOT require confirmation
-- Read tools always execute immediately
+5. You may also freely call investment read tools (getInvestmentAccounts, getPortfolio, getHoldings, getInvestmentTransactions, getPortfolioPerformance, getAssetAllocation, getWatchlists, getInvestmentGoals)
+6. Read tools do NOT require confirmation
+7. Read tools always execute immediately
 
 RISK LEVELS:
 - READ tools: execute immediately, no confirmation needed
@@ -53,7 +54,7 @@ RISK LEVELS:
       riskGuidelines: `All mutation tools require explicit user confirmation via the confirmation flow.
 The confirmation must include the exact parameters the tool will be called with.
 Never execute a mutation tool without a confirmed user response.
-Read-only tools (getAccounts, getTransactions, getBudgets, getGoals, getReports, getNotifications, getTransactionSummary) execute immediately.`,
+Read-only tools (getAccounts, getTransactions, getBudgets, getGoals, getReports, getNotifications, getTransactionSummary, getInvestmentAccounts, getPortfolio, getHoldings, getInvestmentTransactions, getPortfolioPerformance, getAssetAllocation, getWatchlists, getInvestmentGoals) execute immediately.`,
       confirmationProtocol: `1. Agent identifies a mutation tool is needed
 2. Agent outputs a confirmation request with tool name and arguments
 3. User confirms or cancels
@@ -77,6 +78,20 @@ Available states: PENDING_CONFIRMATION → CONFIRMED → EXECUTED, or PENDING_CO
         ],
       },
       {
+        name: 'investment-read',
+        description: 'Read investment data: portfolio, holdings, transactions, watchlists, goals',
+        tools: [
+          'getInvestmentAccounts',
+          'getPortfolio',
+          'getHoldings',
+          'getInvestmentTransactions',
+          'getPortfolioPerformance',
+          'getAssetAllocation',
+          'getWatchlists',
+          'getInvestmentGoals',
+        ],
+      },
+      {
         name: 'financial-action',
         description: 'Perform financial actions with confirmation',
         tools: ['createTransfer', 'createBudget', 'createGoal', 'markNotificationRead'],
@@ -91,6 +106,14 @@ Available states: PENDING_CONFIRMATION → CONFIRMED → EXECUTED, or PENDING_CO
       'getGoals',
       'getNotifications',
       'getReports',
+      'getInvestmentAccounts',
+      'getPortfolio',
+      'getHoldings',
+      'getInvestmentTransactions',
+      'getPortfolioPerformance',
+      'getAssetAllocation',
+      'getWatchlists',
+      'getInvestmentGoals',
       'createTransfer',
       'createBudget',
       'createGoal',
