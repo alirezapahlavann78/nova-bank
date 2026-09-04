@@ -13,6 +13,10 @@ import { HoldingsService } from '../../investments/holdings.service';
 import { InvestmentTransactionsService } from '../../investments/investment-transactions.service';
 import { PortfolioService } from '../../investments/portfolio.service';
 import { WatchlistsService } from '../../investments/watchlists.service';
+import { PaymentsService } from '../../payments/payments.service';
+import { BeneficiariesService } from '../../beneficiaries/beneficiaries.service';
+import { PaymentTemplatesService } from '../../payment-templates/payment-templates.service';
+import { ScheduledPaymentsService } from '../../scheduled-payments/scheduled-payments.service';
 import { ToolRegistration, ToolExecutionContext, ToolExecutionResult } from './interfaces/tool-execution-context.interface';
 
 @Injectable()
@@ -35,6 +39,10 @@ export class ToolManagerService {
     private readonly investmentTransactionsService: InvestmentTransactionsService,
     private readonly portfolioService: PortfolioService,
     private readonly watchlistsService: WatchlistsService,
+    private readonly paymentsService: PaymentsService,
+    private readonly beneficiariesService: BeneficiariesService,
+    private readonly paymentTemplatesService: PaymentTemplatesService,
+    private readonly scheduledPaymentsService: ScheduledPaymentsService,
   ) {
     this.registerTools();
   }
@@ -371,6 +379,90 @@ export class ToolManagerService {
         permission: 'investment:read:goals',
         userScoping: true,
       },
+      {
+        name: 'getPayments',
+        description: 'List payments for the authenticated user with optional filters',
+        parameters: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', enum: ['BILL_PAYMENT', 'TOP_UP', 'DOMESTIC_TRANSFER', 'MOBILE_TOPUP', 'CHARITY', 'OTHER'], description: 'Filter by payment type' },
+            status: { type: 'string', enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REVERSED'], description: 'Filter by payment status' },
+            fromDate: { type: 'string', format: 'date-time', description: 'Start date ISO string' },
+            toDate: { type: 'string', format: 'date-time', description: 'End date ISO string' },
+            limit: { type: 'integer', description: 'Max results (default 20)', default: 20 },
+          },
+        },
+        handler: this.toolGetPayments.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'payment:read:payments',
+        userScoping: true,
+      },
+      {
+        name: 'getBeneficiaries',
+        description: 'Get all beneficiaries for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {
+            destinationType: { type: 'string', enum: ['ACCOUNT', 'CARD', 'MOBILE', 'BILL', 'CHARITY'], description: 'Filter by destination type' },
+          },
+        },
+        handler: this.toolGetBeneficiaries.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'payment:read:beneficiaries',
+        userScoping: true,
+      },
+      {
+        name: 'getPaymentTemplates',
+        description: 'Get all active payment templates for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetPaymentTemplates.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'payment:read:templates',
+        userScoping: true,
+      },
+      {
+        name: 'getScheduledPayments',
+        description: 'Get all active scheduled payments for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetScheduledPayments.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'payment:read:scheduled',
+        userScoping: true,
+      },
+      {
+        name: 'createPayment',
+        description: 'Create a new payment. Requires user confirmation for amounts above threshold.',
+        parameters: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', enum: ['BILL_PAYMENT', 'TOP_UP', 'DOMESTIC_TRANSFER', 'MOBILE_TOPUP', 'CHARITY', 'OTHER'], description: 'Payment type' },
+            amount: { type: 'integer', description: 'Payment amount (positive integer)' },
+            currency: { type: 'string', enum: ['IRT', 'USD', 'EUR'], description: 'Currency code' },
+            sourceAccountId: { type: 'string', description: 'Source account UUID' },
+            destinationType: { type: 'string', enum: ['ACCOUNT', 'CARD', 'MOBILE', 'BILL', 'CHARITY'], description: 'Destination type' },
+            destinationValue: { type: 'string', description: 'Destination value (account number, card number, phone, bill ID)' },
+            destinationName: { type: 'string', description: 'Optional destination name' },
+            description: { type: 'string', description: 'Optional description' },
+            fees: { type: 'integer', description: 'Optional fees (default 0)', default: 0 },
+          },
+          required: ['type', 'amount', 'sourceAccountId', 'destinationType', 'destinationValue'],
+        },
+        handler: this.toolCreatePayment.bind(this),
+        riskLevel: 'action_high',
+        confirmationRequired: true,
+        permission: 'payment:action:create',
+        userScoping: true,
+      },
     ];
 
     for (const tool of tools) {
@@ -665,5 +757,46 @@ export class ToolManagerService {
   private async toolGetInvestmentGoals(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
     const goals = await this.goalsService.findAllByType(context.userId, 'INVESTMENT');
     return { data: goals };
+  }
+
+  private async toolGetPayments(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const query: any = {};
+    if (args.type) query.type = args.type;
+    if (args.status) query.status = args.status;
+    if (args.fromDate) query.fromDate = args.fromDate;
+    if (args.toDate) query.toDate = args.toDate;
+    if (args.limit) query.limit = args.limit;
+    const result = await this.paymentsService.findAll(context.userId, query);
+    return { data: result };
+  }
+
+  private async toolGetBeneficiaries(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.beneficiariesService.findAll(context.userId);
+    return { data: result };
+  }
+
+  private async toolGetPaymentTemplates(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.paymentTemplatesService.findAll(context.userId);
+    return { data: result };
+  }
+
+  private async toolGetScheduledPayments(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.scheduledPaymentsService.findAll(context.userId);
+    return { data: result };
+  }
+
+  private async toolCreatePayment(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.paymentsService.create(context.userId, {
+      type: args.type,
+      amount: args.amount,
+      currency: args.currency,
+      sourceAccountId: args.sourceAccountId,
+      destinationType: args.destinationType,
+      destinationValue: args.destinationValue,
+      destinationName: args.destinationName,
+      description: args.description,
+      fees: args.fees,
+    });
+    return { data: result };
   }
 }

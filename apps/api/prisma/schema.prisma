@@ -57,6 +57,10 @@ enum NotificationType {
   GOAL_COMPLETED
   TRANSACTION_CREATED
   TRANSFER_COMPLETED
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+  PAYMENT_CANCELLED
+  SCHEDULED_PAYMENT_FAILED
   SYSTEM
   INVESTMENT_GOAL_MILESTONE
   INVESTMENT_GOAL_COMPLETED
@@ -96,6 +100,12 @@ model User {
   investmentTransactions InvestmentTransaction[]
   watchlists             Watchlist[]
   watchlistItems         WatchlistItem[]
+  beneficiaries          Beneficiary[]
+  paymentTemplates       PaymentTemplate[]
+  payments               Payment[]
+  paymentAudits          PaymentAudit[]
+  scheduledPayments      ScheduledPayment[]
+  paymentExecutions      PaymentExecution[]
 
   @@index([phone])
   @@index([email])
@@ -338,6 +348,46 @@ enum GoalType {
   INVESTMENT
 }
 
+enum PaymentType {
+  BILL_PAYMENT
+  TOP_UP
+  DOMESTIC_TRANSFER
+  MOBILE_TOPUP
+  CHARITY
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REVERSED
+}
+
+enum PaymentDestinationType {
+  ACCOUNT
+  CARD
+  MOBILE
+  BILL
+  CHARITY
+}
+
+enum ScheduledPaymentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ExecutionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model Notification {
   id        String          @id @default(uuid())
   userId    String
@@ -365,6 +415,7 @@ model NotificationPreference {
   goalAlerts      Boolean  @default(true)
   transactionAlerts Boolean @default(false)
   transferAlerts  Boolean  @default(false)
+  paymentAlerts   Boolean  @default(false)
   systemAlerts    Boolean  @default(true)
   pushEnabled     Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -652,4 +703,169 @@ model WatchlistItem {
   @@index([userId, watchlistId])
   @@index([userId, assetId])
   @@unique([userId, watchlistId, assetId])
+}
+
+model Beneficiary {
+  id               String                @id @default(uuid())
+  userId           String
+  name             String
+  destinationType  PaymentDestinationType
+  destinationValue String
+  bankCode         String?
+  bankName         String?
+  isFavorite       Boolean               @default(false)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentTemplates PaymentTemplate[]
+
+  @@index([userId])
+  @@index([userId, destinationType])
+  @@unique([userId, destinationValue, destinationType])
+}
+
+model PaymentTemplate {
+  id              String                @id @default(uuid())
+  userId          String
+  name            String
+  type            PaymentType
+  amount          Int?
+  sourceAccountId String?
+  destinationType PaymentDestinationType
+  destinationValue String
+  beneficiaryId    String?
+  description     String?
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  beneficiary  Beneficiary?  @relation(fields: [beneficiaryId], references: [id], onDelete: SetNull)
+  scheduledPayments ScheduledPayment[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+}
+
+model Payment {
+  id                  String           @id @default(uuid())
+  userId              String
+  type                PaymentType
+  status              PaymentStatus    @default(PENDING)
+  amount              Int
+  currency            Currency         @default(IRT)
+  sourceAccountId     String
+  destinationType     PaymentDestinationType
+  destinationValue    String
+  destinationName     String?
+  description         String?
+  fees                Int              @default(0)
+  reference           String?
+  internalReference   String?          @unique
+  riskLevel           String?          @default("LOW")
+  executedAt          DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions  PaymentExecution[]
+  audits      PaymentAudit[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, type])
+  @@index([userId, createdAt])
+  @@index([internalReference])
+}
+
+model ScheduledPayment {
+  id              String               @id @default(uuid())
+  userId          String
+  templateId      String?
+  type            PaymentType
+  amount          Int
+  currency        Currency             @default(IRT)
+  sourceAccountId String
+  destinationType PaymentDestinationType
+  destinationValue String
+  status          ScheduledPaymentStatus @default(ACTIVE)
+  frequency       RecurringFrequency
+  startDate       DateTime
+  endDate         DateTime?
+  nextRunAt       DateTime
+  lastRunAt       DateTime?
+  runCount        Int                  @default(0)
+  maxRuns         Int?
+  description     String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     PaymentTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  executions   PaymentExecution[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, nextRunAt])
+}
+
+model PaymentExecution {
+  id                  String           @id @default(uuid())
+  userId              String
+  paymentId           String?
+  scheduledPaymentId  String?
+  status              ExecutionStatus  @default(PENDING)
+  attemptNumber       Int              @default(1)
+  errorCode           String?
+  errorMessage        String?
+  externalReference   String?
+  processedAt         DateTime?
+  createdAt           DateTime         @default(now())
+
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment            Payment?          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  scheduledPayment   ScheduledPayment? @relation(fields: [scheduledPaymentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([paymentId])
+  @@index([scheduledPaymentId])
+  @@index([status])
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid())
+  key          String   @unique
+  userId       String
+  resourceType String
+  resourceId   String?
+  requestHash  String?
+  status       String   @default("PENDING")
+  response     Json?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([key])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PaymentAudit {
+  id              String    @id @default(uuid())
+  paymentId       String
+  userId          String
+  action          String
+  status          String
+  requestId       String?
+  failureReason   String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([userId])
+  @@index([userId, createdAt])
 }

@@ -302,7 +302,13 @@ export interface GoalProgressItem {
   completed: boolean;
 }
 
-export type NotificationType = 'BUDGET_WARNING' | 'BUDGET_EXCEEDED' | 'GOAL_MILESTONE' | 'GOAL_COMPLETED' | 'TRANSACTION_CREATED' | 'TRANSFER_COMPLETED' | 'SYSTEM';
+export type NotificationType = 'BUDGET_WARNING' | 'BUDGET_EXCEEDED' | 'GOAL_MILESTONE' | 'GOAL_COMPLETED' | 'TRANSACTION_CREATED' | 'TRANSFER_COMPLETED' | 'SYSTEM' | 'PAYMENT_COMPLETED' | 'PAYMENT_FAILED' | 'PAYMENT_CANCELLED' | 'SCHEDULED_PAYMENT_FAILED';
+
+export type PaymentType = 'BILL_PAYMENT' | 'TOP_UP' | 'DOMESTIC_TRANSFER' | 'MOBILE_TOPUP' | 'CHARITY' | 'OTHER';
+export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REVERSED';
+export type PaymentDestinationType = 'ACCOUNT' | 'CARD' | 'MOBILE' | 'BILL' | 'CHARITY';
+export type ScheduledPaymentStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type ExecutionStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 
 export interface NotificationSummary {
   id: string;
@@ -679,4 +685,92 @@ export interface AIAgentSummary {
   version: string;
   isEnabled: boolean;
   capabilities: AIAgentCapability[];
+}
+
+export interface BeneficiarySummary {
+  id: string;
+  userId: string;
+  name: string;
+  destinationType: PaymentDestinationType;
+  destinationValue: string;
+  bankCode?: string;
+  bankName?: string;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentTemplateSummary {
+  id: string;
+  userId: string;
+  name: string;
+  type: PaymentType;
+  amount?: number;
+  sourceAccountId?: string;
+  destinationType: PaymentDestinationType;
+  destinationValue: string;
+  beneficiaryId?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentSummary {
+  id: string;
+  userId: string;
+  type: PaymentType;
+  status: PaymentStatus;
+  amount: number;
+  currency: Currency;
+  sourceAccountId: string;
+  destinationType: PaymentDestinationType;
+  destinationValue: string;
+  destinationName?: string;
+  description?: string;
+  fees: number;
+  reference?: string;
+  internalReference?: string;
+  riskLevel?: string;
+  executedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduledPaymentSummary {
+  id: string;
+  userId: string;
+  templateId?: string;
+  type: PaymentType;
+  amount: number;
+  currency: Currency;
+  sourceAccountId: string;
+  destinationType: PaymentDestinationType;
+  destinationValue: string;
+  status: ScheduledPaymentStatus;
+  frequency: RecurringFrequency;
+  startDate: string;
+  endDate?: string;
+  nextRunAt: string;
+  lastRunAt?: string;
+  runCount: number;
+  maxRuns?: number;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentExecutionSummary {
+  id: string;
+  userId: string;
+  paymentId?: string;
+  scheduledPaymentId?: string;
+  status: ExecutionStatus;
+  attemptNumber: number;
+  errorCode?: string;
+  errorMessage?: string;
+  externalReference?: string;
+  processedAt?: string;
+  createdAt: string;
 }

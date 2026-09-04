@@ -13,6 +13,10 @@ import { HoldingsService } from '../src/investments/holdings.service';
 import { InvestmentTransactionsService } from '../src/investments/investment-transactions.service';
 import { PortfolioService } from '../src/investments/portfolio.service';
 import { WatchlistsService } from '../src/investments/watchlists.service';
+import { PaymentsService } from '../src/payments/payments.service';
+import { BeneficiariesService } from '../src/beneficiaries/beneficiaries.service';
+import { PaymentTemplatesService } from '../src/payment-templates/payment-templates.service';
+import { ScheduledPaymentsService } from '../src/scheduled-payments/scheduled-payments.service';
 import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
@@ -40,8 +44,12 @@ describe('ToolManager Security', () => {
   const mockAssetsService = { findAll: jest.fn(), findOne: jest.fn() };
   const mockHoldingsService = { findAll: jest.fn(), findOne: jest.fn() };
   const mockInvestmentTransactionsService = { findAll: jest.fn(), create: jest.fn() };
-  const mockPortfolioService = { getOverview: jest.fn(), getHoldings: jest.fn() };
+  const mockPortfolioService = { getOverview: jest.fn(), getHoldings: jest.fn(), getPerformance: jest.fn(), getAssetAllocation: jest.fn() };
   const mockWatchlistsService = { findAll: jest.fn(), create: jest.fn() };
+  const mockPaymentsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
+  const mockBeneficiariesService = { findAll: jest.fn() };
+  const mockPaymentTemplatesService = { findAll: jest.fn() };
+  const mockScheduledPaymentsService = { findAll: jest.fn() };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -61,6 +69,10 @@ describe('ToolManager Security', () => {
         { provide: InvestmentTransactionsService, useValue: mockInvestmentTransactionsService },
         { provide: PortfolioService, useValue: mockPortfolioService },
         { provide: WatchlistsService, useValue: mockWatchlistsService },
+        { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: BeneficiariesService, useValue: mockBeneficiariesService },
+        { provide: PaymentTemplatesService, useValue: mockPaymentTemplatesService },
+        { provide: ScheduledPaymentsService, useValue: mockScheduledPaymentsService },
       ],
     }).compile();
 
@@ -146,5 +158,65 @@ describe('ToolManager Security', () => {
         'req-1',
       ),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('should require confirmation for createPayment action_high tool', () => {
+    const tool = service.getTool('createPayment');
+    expect(tool?.riskLevel).toBe('action_high');
+    expect(tool?.confirmationRequired).toBe(true);
+    expect(tool?.userScoping).toBe(true);
+    expect(tool?.permission).toBe('payment:action:create');
+  });
+
+  it('should inject correct userId for payment tools', async () => {
+    mockPaymentsService.create.mockResolvedValue({ id: 'pay-1', amount: 5000 });
+
+    const result = await service.executeTool(
+      'createPayment',
+      {
+        type: 'DOMESTIC_TRANSFER',
+        amount: 5000,
+        currency: 'IRT',
+        sourceAccountId: 'acc-1',
+        destinationType: 'ACCOUNT',
+        destinationValue: '123456',
+      },
+      'legitimate-user',
+      'req-1',
+    );
+
+    expect(mockPaymentsService.create).toHaveBeenCalledWith('legitimate-user', expect.objectContaining({
+      type: 'DOMESTIC_TRANSFER',
+      amount: 5000,
+    }));
+  });
+
+  it('should prevent userId injection in createPayment', async () => {
+    await expect(
+      service.executeTool(
+        'createPayment',
+        {
+          userId: 'attacker',
+          type: 'DOMESTIC_TRANSFER',
+          amount: 5000,
+          currency: 'IRT',
+          sourceAccountId: 'acc-1',
+          destinationType: 'ACCOUNT',
+          destinationValue: '123456',
+        },
+        'legitimate-user',
+        'req-1',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('should not require confirmation for payment read tools', () => {
+    const readTools = ['getPayments', 'getBeneficiaries', 'getPaymentTemplates', 'getScheduledPayments'];
+    readTools.forEach((name) => {
+      const tool = service.getTool(name);
+      expect(tool?.riskLevel).toBe('read');
+      expect(tool?.confirmationRequired).toBe(false);
+      expect(tool?.userScoping).toBe(true);
+    });
   });
 });

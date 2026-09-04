@@ -36,6 +36,13 @@ export default function DashboardScreen() {
             <Text className="text-sm text-gray-500">سرمایه‌گذاری</Text>
           </Pressable>
           <Pressable
+            onPress={() => router.push('/payments')}
+            className="bg-white rounded-xl p-5 shadow-sm items-center"
+          >
+            <Text className="text-blue-600 font-semibold mb-1">{fa.payment.payments}</Text>
+            <Text className="text-sm text-gray-500">پرداخت‌ها</Text>
+          </Pressable>
+          <Pressable
             onPress={() => router.push('/budgets')}
             className="bg-white rounded-xl p-5 shadow-sm items-center"
           >

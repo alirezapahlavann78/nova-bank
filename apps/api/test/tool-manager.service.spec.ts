@@ -13,6 +13,10 @@ import { HoldingsService } from '../src/investments/holdings.service';
 import { InvestmentTransactionsService } from '../src/investments/investment-transactions.service';
 import { PortfolioService } from '../src/investments/portfolio.service';
 import { WatchlistsService } from '../src/investments/watchlists.service';
+import { PaymentsService } from '../src/payments/payments.service';
+import { BeneficiariesService } from '../src/beneficiaries/beneficiaries.service';
+import { PaymentTemplatesService } from '../src/payment-templates/payment-templates.service';
+import { ScheduledPaymentsService } from '../src/scheduled-payments/scheduled-payments.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 
@@ -41,6 +45,10 @@ describe('ToolManagerService', () => {
   const mockInvestmentTransactionsService = { findAll: jest.fn(), findOne: jest.fn() };
   const mockPortfolioService = { getOverview: jest.fn(), getHoldings: jest.fn(), getPerformance: jest.fn(), getAssetAllocation: jest.fn() };
   const mockWatchlistsService = { findAll: jest.fn(), findOne: jest.fn() };
+  const mockPaymentsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
+  const mockBeneficiariesService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
+  const mockPaymentTemplatesService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
+  const mockScheduledPaymentsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
   const mockPrisma = {};
 
   beforeEach(async () => {
@@ -61,6 +69,10 @@ describe('ToolManagerService', () => {
         { provide: InvestmentTransactionsService, useValue: mockInvestmentTransactionsService },
         { provide: PortfolioService, useValue: mockPortfolioService },
         { provide: WatchlistsService, useValue: mockWatchlistsService },
+        { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: BeneficiariesService, useValue: mockBeneficiariesService },
+        { provide: PaymentTemplatesService, useValue: mockPaymentTemplatesService },
+        { provide: ScheduledPaymentsService, useValue: mockScheduledPaymentsService },
       ],
     }).compile();
 
@@ -69,9 +81,9 @@ describe('ToolManagerService', () => {
   });
 
   describe('tool registration', () => {
-    it('should register all 20 tools', () => {
+    it('should register all 25 tools', () => {
       const tools = service.getToolDefinitions();
-      expect(tools.length).toBe(20);
+      expect(tools.length).toBe(25);
       const names = tools.map((t) => t.name);
       expect(names).toContain('getAccounts');
       expect(names).toContain('getAccountBalance');
@@ -93,6 +105,11 @@ describe('ToolManagerService', () => {
       expect(names).toContain('getAssetAllocation');
       expect(names).toContain('getWatchlists');
       expect(names).toContain('getInvestmentGoals');
+      expect(names).toContain('getPayments');
+      expect(names).toContain('getBeneficiaries');
+      expect(names).toContain('getPaymentTemplates');
+      expect(names).toContain('getScheduledPayments');
+      expect(names).toContain('createPayment');
     });
   });
 

@@ -251,3 +251,56 @@ export const addWatchlistItemSchema = z.object({
   assetId: z.string().uuid(),
   accountId: z.string().uuid().optional(),
 });
+
+export const paymentTypeSchema = z.enum(['BILL_PAYMENT', 'TOP_UP', 'DOMESTIC_TRANSFER', 'MOBILE_TOPUP', 'CHARITY', 'OTHER']);
+export const paymentStatusSchema = z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REVERSED']);
+export const paymentDestinationTypeSchema = z.enum(['ACCOUNT', 'CARD', 'MOBILE', 'BILL', 'CHARITY']);
+export const scheduledPaymentStatusSchema = z.enum(['ACTIVE', 'PAUSED', 'COMPLETED', 'FAILED', 'CANCELLED']);
+
+export const createPaymentSchema = z.object({
+  type: paymentTypeSchema,
+  amount: z.coerce.number().int().positive(),
+  currency: currencySchema.default('IRT'),
+  sourceAccountId: z.string().uuid(),
+  destinationType: paymentDestinationTypeSchema,
+  destinationValue: z.string().max(100),
+  destinationName: z.string().max(200).optional(),
+  description: z.string().max(500).optional(),
+  fees: z.coerce.number().int().nonnegative().default(0),
+});
+
+export const createBeneficiarySchema = z.object({
+  name: z.string().max(100),
+  destinationType: paymentDestinationTypeSchema,
+  destinationValue: z.string().max(100),
+  bankCode: z.string().max(20).optional(),
+  bankName: z.string().max(100).optional(),
+  isFavorite: z.boolean().default(false),
+});
+
+export const createPaymentTemplateSchema = z.object({
+  name: z.string().max(100),
+  type: paymentTypeSchema,
+  amount: z.coerce.number().int().positive().optional(),
+  sourceAccountId: z.string().uuid().optional(),
+  destinationType: paymentDestinationTypeSchema,
+  destinationValue: z.string().max(100),
+  beneficiaryId: z.string().uuid().optional(),
+  description: z.string().max(500).optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const createScheduledPaymentSchema = z.object({
+  type: paymentTypeSchema,
+  amount: z.coerce.number().int().positive(),
+  currency: currencySchema.default('IRT'),
+  sourceAccountId: z.string().uuid(),
+  destinationType: paymentDestinationTypeSchema,
+  destinationValue: z.string().max(100),
+  frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
+  startDate: z.string().datetime(),
+  endDate: z.string().datetime().optional(),
+  maxRuns: z.coerce.number().int().positive().optional(),
+  description: z.string().max(500).optional(),
+  templateId: z.string().uuid().optional(),
+});
