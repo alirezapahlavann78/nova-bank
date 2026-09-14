@@ -17,7 +17,13 @@ import { PaymentsService } from '../src/payments/payments.service';
 import { BeneficiariesService } from '../src/beneficiaries/beneficiaries.service';
 import { PaymentTemplatesService } from '../src/payment-templates/payment-templates.service';
 import { ScheduledPaymentsService } from '../src/scheduled-payments/scheduled-payments.service';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { CreditProfileService } from '../src/credit/credit-profile.service';
+import { CreditEngineService } from '../src/credit/credit-engine.service';
+import { CreditScoreService } from '../src/credit/credit-score.service';
+import { EligibilityEngineService } from '../src/credit/credit-eligibility.service';
+import { LoanProductsService } from '../src/lending/loan-products.service';
+import { LoanApplicationsService } from '../src/lending/loan-applications.service';
+import { LoansService } from '../src/lending/loans.service';
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 
 describe('ToolManagerService', () => {
@@ -49,13 +55,18 @@ describe('ToolManagerService', () => {
   const mockBeneficiariesService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
   const mockPaymentTemplatesService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
   const mockScheduledPaymentsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn() };
-  const mockPrisma = {};
+  const mockCreditProfileService = { getProfile: jest.fn(), updateProfile: jest.fn() };
+  const mockCreditEngineService = { getScore: jest.fn(), calculateScore: jest.fn(), gatherFinancialData: jest.fn(), recalculate: jest.fn() };
+  const mockEligibilityEngineService = { evaluateEligibility: jest.fn() };
+  const mockLoanProductsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn(), update: jest.fn(), remove: jest.fn() };
+  const mockLoanApplicationsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn(), submit: jest.fn(), approve: jest.fn(), reject: jest.fn() };
+  const mockLoansService = { findAll: jest.fn(), findOne: jest.fn(), activate: jest.fn(), makePayment: jest.fn() };
+  const mockCreditScoreService = { getHistory: jest.fn() };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       providers: [
         ToolManagerService,
-        { provide: PrismaService, useValue: mockPrisma },
         { provide: AccountsService, useValue: mockAccountsService },
         { provide: TransactionsService, useValue: mockTransactionsService },
         { provide: BudgetsService, useValue: mockBudgetsService },
@@ -73,6 +84,13 @@ describe('ToolManagerService', () => {
         { provide: BeneficiariesService, useValue: mockBeneficiariesService },
         { provide: PaymentTemplatesService, useValue: mockPaymentTemplatesService },
         { provide: ScheduledPaymentsService, useValue: mockScheduledPaymentsService },
+        { provide: CreditProfileService, useValue: mockCreditProfileService },
+        { provide: CreditEngineService, useValue: mockCreditEngineService },
+        { provide: CreditScoreService, useValue: mockCreditScoreService },
+        { provide: EligibilityEngineService, useValue: mockEligibilityEngineService },
+        { provide: LoanProductsService, useValue: mockLoanProductsService },
+        { provide: LoanApplicationsService, useValue: mockLoanApplicationsService },
+        { provide: LoansService, useValue: mockLoansService },
       ],
     }).compile();
 
@@ -81,9 +99,9 @@ describe('ToolManagerService', () => {
   });
 
   describe('tool registration', () => {
-    it('should register all 25 tools', () => {
+    it('should register all 35 tools', () => {
       const tools = service.getToolDefinitions();
-      expect(tools.length).toBe(25);
+      expect(tools.length).toBe(35);
       const names = tools.map((t) => t.name);
       expect(names).toContain('getAccounts');
       expect(names).toContain('getAccountBalance');
@@ -110,6 +128,16 @@ describe('ToolManagerService', () => {
       expect(names).toContain('getPaymentTemplates');
       expect(names).toContain('getScheduledPayments');
       expect(names).toContain('createPayment');
+      expect(names).toContain('getCreditProfile');
+      expect(names).toContain('getCreditScore');
+      expect(names).toContain('getCreditScoreHistory');
+      expect(names).toContain('checkCreditEligibility');
+      expect(names).toContain('getFinancialHealth');
+      expect(names).toContain('getLoanProducts');
+      expect(names).toContain('getLoanApplications');
+      expect(names).toContain('getLoans');
+      expect(names).toContain('createLoanApplication');
+      expect(names).toContain('makeLoanPayment');
     });
   });
 

@@ -1,4 +1,4 @@
-import { getWithAuth, postWithAuth, patchWithAuth, ApiResponse } from './api';
+import { getWithAuth, postWithAuth, patchWithAuth, deleteWithAuth, ApiResponse } from './api';
 
 export interface GoalSummaryResponse {
   id: string;
@@ -47,7 +47,7 @@ export async function updateGoal(accessToken: string, id: string, data: {
 }
 
 export async function deleteGoal(accessToken: string, id: string): Promise<ApiResponse> {
-  return postWithAuth<ApiResponse>(`/goals/${id}`, {}, accessToken);
+  return deleteWithAuth<ApiResponse>(`/goals/${id}`, accessToken);
 }
 
 export async function addGoalProgress(accessToken: string, id: string, amount: number): Promise<GoalSummaryResponse> {

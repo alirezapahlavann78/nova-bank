@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, User } from '../stores/authStore';
 import { login, register, logout, refreshAccessToken, getAccessToken } from '../services/auth';
+import { getWithAuth } from '../services/api';
 
 export function useAuth() {
   const { user, accessToken, isAuthenticated, isLoading, setAuth, clearAuth, setLoading } =
@@ -10,19 +11,30 @@ export function useAuth() {
     setLoading(true);
     try {
       const token = await getAccessToken();
-      if (token) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          useAuthStore.getState().setAuth(
-            { id: '', phone: '', locale: 'fa-IR', timezone: 'Asia/Tehran' },
-            newToken,
-          );
-        } else {
-          clearAuth();
-        }
-      } else {
+      if (!token) {
         clearAuth();
+        return;
       }
+
+      const newToken = await refreshAccessToken();
+      if (!newToken) {
+        clearAuth();
+        return;
+      }
+
+      // Fetching the profile must never block app startup / lock the UI
+      // on the loading screen if the request fails.
+      try {
+        const me = await getWithAuth<User>('/users/me', newToken);
+        useAuthStore.getState().setAuth(me, newToken);
+      } catch {
+        useAuthStore.getState().setAuth(
+          { id: '', phone: '', locale: 'fa-IR', timezone: 'Asia/Tehran' },
+          newToken,
+        );
+      }
+    } catch {
+      clearAuth();
     } finally {
       setLoading(false);
     }

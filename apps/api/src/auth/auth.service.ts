@@ -100,16 +100,17 @@ export class AuthService {
   }
 
   async refresh(dto: RefreshDto): Promise<AuthResponse> {
-    const newHash = await this.tokenService.hashRefreshToken(dto.refreshToken);
-    const result = await this.sessionService.rotateRefreshToken(dto.refreshToken, newHash);
-    const user = await this.usersService.findById(result.userId);
+    // Rotation issues a brand-new refresh token; the service revokes the old
+    // session and returns the fresh token, which the client must persist.
+    const rotated = await this.sessionService.rotateRefreshToken(dto.refreshToken);
+    const user = await this.usersService.findById(rotated.userId);
     if (!user) {
       throw new UnauthorizedException('Invalid session');
     }
     const accessToken = await this.tokenService.generateAccessToken(user.id);
     return this.buildResponse(user, {
       accessToken,
-      refreshToken: dto.refreshToken,
+      refreshToken: rotated.refreshToken,
     });
   }
 

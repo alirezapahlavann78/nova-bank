@@ -1,4 +1,4 @@
-import { getWithAuth, postWithAuth, patchWithAuth, ApiResponse } from './api';
+import { getWithAuth, postWithAuth, patchWithAuth, deleteWithAuth, ApiResponse } from './api';
 
 export interface BudgetSummaryResponse {
   id: string;
@@ -54,5 +54,5 @@ export async function updateBudget(accessToken: string, id: string, data: {
 }
 
 export async function deleteBudget(accessToken: string, id: string): Promise<ApiResponse> {
-  return postWithAuth<ApiResponse>(`/budgets/${id}`, {}, accessToken);
+  return deleteWithAuth<ApiResponse>(`/budgets/${id}`, accessToken);
 }

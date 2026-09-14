@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { randomUUID } from 'crypto';
 import { AccountsService } from '../../accounts/accounts.service';
 import { TransactionsService } from '../../transactions/transactions.service';
 import { BudgetsService } from '../../budgets/budgets.service';
@@ -17,6 +17,13 @@ import { PaymentsService } from '../../payments/payments.service';
 import { BeneficiariesService } from '../../beneficiaries/beneficiaries.service';
 import { PaymentTemplatesService } from '../../payment-templates/payment-templates.service';
 import { ScheduledPaymentsService } from '../../scheduled-payments/scheduled-payments.service';
+import { CreditProfileService } from '../../credit/credit-profile.service';
+import { CreditEngineService } from '../../credit/credit-engine.service';
+import { CreditScoreService } from '../../credit/credit-score.service';
+import { EligibilityEngineService } from '../../credit/credit-eligibility.service';
+import { LoanProductsService } from '../../lending/loan-products.service';
+import { LoanApplicationsService } from '../../lending/loan-applications.service';
+import { LoansService } from '../../lending/loans.service';
 import { ToolRegistration, ToolExecutionContext, ToolExecutionResult } from './interfaces/tool-execution-context.interface';
 
 @Injectable()
@@ -25,7 +32,6 @@ export class ToolManagerService {
   private readonly tools = new Map<string, ToolRegistration>();
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly accountsService: AccountsService,
     private readonly transactionsService: TransactionsService,
     private readonly budgetsService: BudgetsService,
@@ -43,6 +49,13 @@ export class ToolManagerService {
     private readonly beneficiariesService: BeneficiariesService,
     private readonly paymentTemplatesService: PaymentTemplatesService,
     private readonly scheduledPaymentsService: ScheduledPaymentsService,
+    private readonly creditProfileService: CreditProfileService,
+    private readonly creditEngineService: CreditEngineService,
+    private readonly creditScoreService: CreditScoreService,
+    private readonly eligibilityEngineService: EligibilityEngineService,
+    private readonly loanProductsService: LoanProductsService,
+    private readonly loanApplicationsService: LoanApplicationsService,
+    private readonly loansService: LoansService,
   ) {
     this.registerTools();
   }
@@ -463,6 +476,159 @@ export class ToolManagerService {
         permission: 'payment:action:create',
         userScoping: true,
       },
+      {
+        name: 'getCreditProfile',
+        description: 'Get the credit profile for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetCreditProfile.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'credit:read:profile',
+        userScoping: true,
+      },
+      {
+        name: 'getCreditScore',
+        description: 'Get the current credit score for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetCreditScore.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'credit:read:score',
+        userScoping: true,
+      },
+      {
+        name: 'getCreditScoreHistory',
+        description: 'Get credit score history for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetCreditScoreHistory.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'credit:read:score',
+        userScoping: true,
+      },
+      {
+        name: 'checkCreditEligibility',
+        description: 'Check credit eligibility for a loan amount',
+        parameters: {
+          type: 'object',
+          properties: {
+            amount: { type: 'integer', description: 'Requested loan amount' },
+            currency: { type: 'string', enum: ['IRT', 'USD', 'EUR'], description: 'Currency code', default: 'IRT' },
+            duration: { type: 'integer', description: 'Loan duration in months', default: 12 },
+          },
+          required: ['amount'],
+        },
+        handler: this.toolCheckCreditEligibility.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'credit:read:eligibility',
+        userScoping: true,
+      },
+      {
+        name: 'getFinancialHealth',
+        description: 'Get financial health assessment for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetFinancialHealth.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'credit:read:health',
+        userScoping: true,
+      },
+      {
+        name: 'getLoanProducts',
+        description: 'Get available loan products',
+        parameters: {
+          type: 'object',
+          properties: {
+            activeOnly: { type: 'boolean', description: 'Filter to active products only', default: true },
+          },
+        },
+        handler: this.toolGetLoanProducts.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'lending:read:products',
+        userScoping: false,
+      },
+      {
+        name: 'getLoanApplications',
+        description: 'Get loan applications for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'CANCELLED'], description: 'Filter by status' },
+          },
+        },
+        handler: this.toolGetLoanApplications.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'lending:read:applications',
+        userScoping: true,
+      },
+      {
+        name: 'getLoans',
+        description: 'Get active loans for the authenticated user',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        handler: this.toolGetLoans.bind(this),
+        riskLevel: 'read',
+        confirmationRequired: false,
+        permission: 'lending:read:loans',
+        userScoping: true,
+      },
+      {
+        name: 'createLoanApplication',
+        description: 'Create a new loan application. Requires user confirmation.',
+        parameters: {
+          type: 'object',
+          properties: {
+            loanProductId: { type: 'string', description: 'Loan product UUID' },
+            requestedAmount: { type: 'integer', description: 'Requested loan amount' },
+            durationMonths: { type: 'integer', description: 'Loan duration in months' },
+            currency: { type: 'string', enum: ['IRT', 'USD', 'EUR'], description: 'Currency code', default: 'IRT' },
+            purpose: { type: 'string', description: 'Loan purpose' },
+          },
+          required: ['loanProductId', 'requestedAmount', 'durationMonths'],
+        },
+        handler: this.toolCreateLoanApplication.bind(this),
+        riskLevel: 'action_low',
+        confirmationRequired: true,
+        permission: 'lending:action:application:create',
+        userScoping: true,
+      },
+      {
+        name: 'makeLoanPayment',
+        description: 'Make a payment on an active loan. Requires user confirmation.',
+        parameters: {
+          type: 'object',
+          properties: {
+            loanId: { type: 'string', description: 'Loan UUID' },
+            amount: { type: 'integer', description: 'Payment amount' },
+            currency: { type: 'string', enum: ['IRT', 'USD', 'EUR'], description: 'Currency code', default: 'IRT' },
+            installmentId: { type: 'string', description: 'Optional specific installment ID' },
+            idempotencyKey: { type: 'string', description: 'Optional idempotency key' },
+          },
+          required: ['loanId', 'amount'],
+        },
+        handler: this.toolMakeLoanPayment.bind(this),
+        riskLevel: 'action_high',
+        confirmationRequired: true,
+        permission: 'lending:action:payment',
+        userScoping: true,
+      },
     ];
 
     for (const tool of tools) {
@@ -797,6 +963,97 @@ export class ToolManagerService {
       description: args.description,
       fees: args.fees,
     });
+    return { data: result };
+  }
+
+  private async toolGetCreditProfile(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const profile = await this.creditProfileService.getProfile(context.userId);
+    const score = await this.creditEngineService.getScore(context.userId);
+    return { data: { ...profile, score } };
+  }
+
+  private async toolGetCreditScore(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.creditEngineService.getScore(context.userId);
+    return { data: result };
+  }
+
+  private async toolGetCreditScoreHistory(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.creditScoreService.getHistory(context.userId, 20);
+    return { data: result };
+  }
+
+  private async toolCheckCreditEligibility(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const currency = args.currency || 'IRT';
+    const duration = args.duration || 12;
+    const result = await this.eligibilityEngineService.evaluateEligibility(
+      context.userId,
+      args.amount,
+      currency,
+      duration,
+    );
+    return { data: result };
+  }
+
+  private async toolGetFinancialHealth(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const profile = await this.creditProfileService.getProfile(context.userId);
+    const score = await this.creditEngineService.getScore(context.userId);
+    const loans = await this.loansService.findAll(context.userId);
+    const activeLoans = loans.filter((l: any) => l.status === 'ACTIVE');
+    const totalDebt = activeLoans.reduce((sum: number, l: any) => sum + (l.remainingBalance ?? 0), 0);
+
+    return {
+      data: {
+        creditScore: score,
+        profile,
+        totalActiveDebt: totalDebt,
+        activeLoanCount: activeLoans.length,
+        loans: loans.map((l: any) => ({
+          id: l.id,
+          principal: l.principal,
+          remainingBalance: l.remainingBalance,
+          status: l.status,
+          interestRate: l.interestRate,
+          currency: l.currency,
+        })),
+      },
+    };
+  }
+
+  private async toolGetLoanProducts(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const activeOnly = args.activeOnly !== false;
+    const result = await this.loanProductsService.findAll(undefined, { activeOnly });
+    return { data: result };
+  }
+
+  private async toolGetLoanApplications(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.loanApplicationsService.findAll(context.userId);
+    return { data: result };
+  }
+
+  private async toolGetLoans(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.loansService.findAll(context.userId);
+    return { data: result };
+  }
+
+  private async toolCreateLoanApplication(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const result = await this.loanApplicationsService.create(context.userId, {
+      loanProductId: args.loanProductId,
+      requestedAmount: args.requestedAmount,
+      durationMonths: args.durationMonths,
+      currency: args.currency,
+      purpose: args.purpose,
+    });
+    return { data: result };
+  }
+
+  private async toolMakeLoanPayment(context: ToolExecutionContext, args: Record<string, any>): Promise<ToolExecutionResult> {
+    const idempotencyKey = args.idempotencyKey || randomUUID();
+    const result = await this.loansService.makePayment(
+      context.userId,
+      args.loanId,
+      args.amount,
+      idempotencyKey,
+    );
     return { data: result };
   }
 }

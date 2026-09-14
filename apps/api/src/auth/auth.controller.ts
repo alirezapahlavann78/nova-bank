@@ -16,26 +16,23 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RateLimitInterceptor } from '../common/interceptors/rate-limit.interceptor';
 
 @Controller('auth')
-@UseInterceptors(RateLimitInterceptor)
+@UseInterceptors(new RateLimitInterceptor({ points: 100, duration: 60000 }))
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @UseInterceptors(RateLimitInterceptor)
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(RateLimitInterceptor)
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(RateLimitInterceptor)
   async refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto);
   }

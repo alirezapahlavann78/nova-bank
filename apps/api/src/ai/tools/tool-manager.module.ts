@@ -8,7 +8,12 @@ import { NotificationsModule } from '../../notifications/notifications.module';
 import { ReportsModule } from '../../reports/reports.module';
 import { TransfersModule } from '../../transfers/transfers.module';
 import { InvestmentsModule } from '../../investments/investments.module';
-import { PrismaService } from '../../prisma/prisma.service';
+import { CreditModule } from '../../credit/credit.module';
+import { LendingModule } from '../../lending/lending.module';
+import { PaymentsModule } from '../../payments/payments.module';
+import { BeneficiariesModule } from '../../beneficiaries/beneficiaries.module';
+import { PaymentTemplatesModule } from '../../payment-templates/payment-templates.module';
+import { ScheduledPaymentsModule } from '../../scheduled-payments/scheduled-payments.module';
 
 @Module({
   imports: [
@@ -20,8 +25,14 @@ import { PrismaService } from '../../prisma/prisma.service';
     ReportsModule,
     TransfersModule,
     InvestmentsModule,
+    CreditModule,
+    LendingModule,
+    PaymentsModule,
+    BeneficiariesModule,
+    PaymentTemplatesModule,
+    ScheduledPaymentsModule,
   ],
-  providers: [ToolManagerService, PrismaService],
+  providers: [ToolManagerService],
   exports: [ToolManagerService],
 })
 export class ToolManagerModule {}

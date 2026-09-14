@@ -68,6 +68,15 @@ enum NotificationType {
   DIVIDEND_RECEIVED
   UNREALIZED_LOSS
   UNREALIZED_GAIN
+  LOAN_APPLICATION_SUBMITTED
+  LOAN_APPLICATION_APPROVED
+  LOAN_APPLICATION_REJECTED
+  LOAN_PAYMENT_DUE
+  LOAN_PAYMENT_OVERDUE
+  LOAN_PAYMENT_COMPLETED
+  LOAN_MATURITY
+  CREDIT_SCORE_CHANGED
+  CREDIT_ELIGIBILITY_CHANGED
 }
 
 model User {
@@ -100,15 +109,23 @@ model User {
   investmentTransactions InvestmentTransaction[]
   watchlists             Watchlist[]
   watchlistItems         WatchlistItem[]
-  beneficiaries          Beneficiary[]
-  paymentTemplates       PaymentTemplate[]
-  payments               Payment[]
-  paymentAudits          PaymentAudit[]
-  scheduledPayments      ScheduledPayment[]
-  paymentExecutions      PaymentExecution[]
+   beneficiaries          Beneficiary[]
+   paymentTemplates       PaymentTemplate[]
+   payments               Payment[]
+   paymentAudits          PaymentAudit[]
+   scheduledPayments      ScheduledPayment[]
+   paymentExecutions      PaymentExecution[]
+   creditProfile          CreditProfile?
+   creditScoreHistory     CreditScoreHistory[]
+   loanProducts           LoanProduct[]
+   loanApplications       LoanApplication[]
+   loans                  Loan[]
+   loanInstallments       LoanInstallment[]
+   loanPayments           LoanPayment[]
+   creditAudits           CreditAudit[]
 
-  @@index([phone])
-  @@index([email])
+   @@index([phone])
+   @@index([email])
 }
 
 model Session {
@@ -416,6 +433,8 @@ model NotificationPreference {
   transactionAlerts Boolean @default(false)
   transferAlerts  Boolean  @default(false)
   paymentAlerts   Boolean  @default(false)
+  loanAlerts      Boolean  @default(true)
+  creditAlerts    Boolean  @default(true)
   systemAlerts    Boolean  @default(true)
   pushEnabled     Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -865,7 +884,263 @@ model PaymentAudit {
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([paymentId])
   @@index([userId])
   @@index([userId, createdAt])
+}
+
+enum CreditScoreBand {
+  POOR
+  FAIR
+  GOOD
+  VERY_GOOD
+  EXCELLENT
+}
+
+enum LoanApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LoanStatus {
+  APPROVED
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  PENDING
+  DUE
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum LoanPaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CreditRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  BLOCKED
+}
+
+enum RepaymentFrequency {
+  MONTHLY
+  WEEKLY
+  BI_WEEKLY
+  QUARTERLY
+}
+
+model CreditProfile {
+  id              String        @id @default(uuid())
+  userId          String        @unique
+  internalScore   Int           @default(500)
+  scoreBand       CreditScoreBand @default(FAIR)
+  totalDebt       Int           @default(0)
+  activeLoans     Int           @default(0)
+  repaymentHistory String       @default("GOOD")
+  utilization     Float          @default(0)
+  scoringVersion  String         @default("1.0")
+  lastCalculatedAt DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scoreHistory     CreditScoreHistory[]
+
+  @@index([userId])
+  @@index([internalScore])
+  @@index([scoreBand])
+}
+
+model CreditScoreHistory {
+  id              String           @id @default(uuid())
+  userId          String
+  creditProfileId String
+  score           Int
+  previousScore   Int?
+  reason          String?
+  calculatedAt    DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile  CreditProfile @relation(fields: [creditProfileId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([creditProfileId])
+  @@index([calculatedAt])
+}
+
+model LoanProduct {
+  id                String   @id @default(uuid())
+  userId          String?
+  name              String
+  description       String?
+  currency          Currency @default(IRT)
+  minAmount         Int
+  maxAmount         Int
+  interestRate      Float
+  durationMonths    Int
+  installmentFrequency RepaymentFrequency @default(MONTHLY)
+  status            String   @default("ACTIVE")
+  isActive          Boolean  @default(true)
+  requiredScoreBand CreditScoreBand?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  applications      LoanApplication[]
+  loans             Loan[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([isActive])
+}
+
+model LoanApplication {
+  id              String                @id @default(uuid())
+  userId          String
+  loanProductId   String
+  requestedAmount Int
+  currency        Currency              @default(IRT)
+  durationMonths  Int
+  purpose         String?
+  status          LoanApplicationStatus @default(DRAFT)
+  eligibilityResult Json?
+  riskLevel       CreditRiskLevel?
+  scoringVersion  String?
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loanProduct    LoanProduct @relation(fields: [loanProductId], references: [id])
+  loan           Loan?       @relation("LoanApplicationLoan")
+  loanId         String?
+
+  @@index([userId])
+  @@index([loanProductId])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model Loan {
+  id                 String       @id @default(uuid())
+  userId             String
+  loanApplicationId  String       @unique
+  loanProductId      String
+  principal          Int
+  interestAmount     Int          @default(0)
+  totalPayable       Int
+  remainingBalance   Int
+  currency           Currency     @default(IRT)
+  status             LoanStatus   @default(APPROVED)
+  startDate          DateTime?
+  maturityDate       DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application     LoanApplication   @relation("LoanApplicationLoan", fields: [loanApplicationId], references: [id])
+  product         LoanProduct       @relation(fields: [loanProductId], references: [id])
+  installments    LoanInstallment[]
+  payments        LoanPayment[]
+
+  @@index([userId])
+  @@index([loanApplicationId])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model LoanInstallment {
+  id             String           @id @default(uuid())
+  userId         String
+  loanId         String
+  installmentNumber Int
+  dueDate        DateTime
+  principalAmount Int
+  interestAmount  Int              @default(0)
+  totalAmount     Int
+  paidAmount      Int              @default(0)
+  remainingAmount Int
+  status          InstallmentStatus @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loan     Loan           @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  payments LoanPayment[]
+
+  @@index([userId])
+  @@index([loanId])
+  @@index([loanId, dueDate])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model LoanPayment {
+  id              String            @id @default(uuid())
+  userId          String
+  loanId          String
+  installmentId   String?
+  amount          Int
+  currency        Currency          @default(IRT)
+  status          LoanPaymentStatus @default(PENDING)
+  paymentDate     DateTime?
+  reference       String?
+  idempotencyKey  String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loan         Loan             @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  installment  LoanInstallment? @relation(fields: [installmentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([loanId])
+  @@index([installmentId])
+  @@index([status])
+  @@index([idempotencyKey])
+}
+
+model CreditAudit {
+  id              String    @id @default(uuid())
+  userId          String
+  action          String
+  status          String
+  requestId       String?
+  failureReason   String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  paymentId       String?
+  loanId          String?
+  loanApplicationId String?
+  installmentId   String?
+  creditProfileId String?
+  scoreHistoryId  String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([loanId])
+  @@index([creditProfileId])
 }

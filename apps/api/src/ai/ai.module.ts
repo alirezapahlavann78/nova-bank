@@ -4,6 +4,7 @@ import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { AIGatewayModule, AIGatewayService } from './gateway';
 import { AgentRegistryModule, AgentRegistryService } from './registry';
+import { MemoryModule } from './memory/memory.module';
 import { OrchestratorModule } from './orchestrator/orchestrator.module';
 import { FinancialAssistantAgent } from './registry/agents/financial-assistant.agent';
 
@@ -12,6 +13,7 @@ import { FinancialAssistantAgent } from './registry/agents/financial-assistant.a
     ConfigModule,
     AIGatewayModule,
     AgentRegistryModule,
+    MemoryModule,
     OrchestratorModule,
   ],
   controllers: [AiController],

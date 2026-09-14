@@ -6,16 +6,24 @@ export function usePayments(accessToken: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchPayments = useCallback(async () => {
     if (!accessToken) return;
     setIsLoading(true);
-    getPayments(accessToken)
-      .then(setData)
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+    try {
+      setData(await getPayments(accessToken));
+      setError(null);
+    } catch (fetchError) {
+      setError(fetchError as Error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [accessToken]);
 
-  return { data, isLoading, error };
+  useEffect(() => {
+    void fetchPayments();
+  }, [fetchPayments]);
+
+  return { data, isLoading, error, refetch: fetchPayments };
 }
 
 export function usePayment(accessToken: string, id: string) {

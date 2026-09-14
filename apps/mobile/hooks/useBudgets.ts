@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getBudgets, getBudget, BudgetSummaryResponse } from '../services/budgets';
 
 export function useBudgets(accessToken: string) {
@@ -6,15 +6,24 @@ export function useBudgets(accessToken: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchBudgets = useCallback(async () => {
     if (!accessToken) return;
-    getBudgets(accessToken)
-      .then(setData)
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+    setIsLoading(true);
+    try {
+      setData(await getBudgets(accessToken));
+      setError(null);
+    } catch (fetchError) {
+      setError(fetchError as Error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [accessToken]);
 
-  return { data, isLoading, error };
+  useEffect(() => {
+    void fetchBudgets();
+  }, [fetchBudgets]);
+
+  return { data, isLoading, error, refetch: fetchBudgets };
 }
 
 export function useBudget(accessToken: string, id: string) {

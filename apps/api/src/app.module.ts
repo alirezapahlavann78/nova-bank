@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
+import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
@@ -19,6 +20,8 @@ import { PaymentTemplatesModule } from './payment-templates/payment-templates.mo
 import { ScheduledPaymentsModule } from './scheduled-payments/scheduled-payments.module';
 import { PaymentExecutionsModule } from './payment-executions/payment-executions.module';
 import { IdempotencyKeysModule } from './idempotency-keys/idempotency-keys.module';
+import { CreditModule } from './credit/credit.module';
+import { LendingModule } from './lending/lending.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { GoalsModule } from './goals/goals.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -26,7 +29,6 @@ import { NotificationPreferencesModule } from './notification-preferences/notifi
 import { ReportsModule } from './reports/reports.module';
 import { AIModule } from './ai/ai.module';
 import { InvestmentsModule } from './investments/investments.module';
-import { PrismaService } from './prisma/prisma.service';
 
 @Module({
   imports: [
@@ -40,6 +42,7 @@ import { PrismaService } from './prisma/prisma.service';
             : undefined,
       },
     }),
+    PrismaModule,
     CommonModule,
     HealthModule,
     AuthModule,
@@ -57,6 +60,8 @@ import { PrismaService } from './prisma/prisma.service';
     ScheduledPaymentsModule,
     PaymentExecutionsModule,
     IdempotencyKeysModule,
+    CreditModule,
+    LendingModule,
     BudgetsModule,
     GoalsModule,
     NotificationsModule,
@@ -65,7 +70,5 @@ import { PrismaService } from './prisma/prisma.service';
     AIModule,
     InvestmentsModule,
   ],
-  providers: [PrismaService],
-  exports: [PrismaService],
 })
 export class AppModule {}

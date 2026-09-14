@@ -1,92 +1,179 @@
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../../hooks/useAuth';
-import { useAssetAllocation, usePortfolioPerformance } from '../../../hooks/useInvestments';
-import { fa } from '../../../localization';
-import { formatCurrency } from '../../../utils/format';
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import {
+  DataList,
+  DataRow,
+  GlassCard,
+  GlassListCard,
+  GradientBackground,
+  MoneyText,
+  ProgressBar,
+  ScreenHeader,
+  ScreenState,
+} from "../../../components/ui";
+import { useAuth } from "../../../hooks/useAuth";
+import { useAssetAllocation, usePortfolioPerformance } from "../../../hooks/useInvestments";
+import { useTheme } from "../../../theme";
+import { fa } from "../../../localization";
+import { formatCurrency } from "../../../utils/format";
 
 export default function InvestmentAnalyticsScreen() {
   const { accessToken } = useAuth();
   const router = useRouter();
-  const { data: allocation, isLoading: loadingAlloc } = useAssetAllocation(accessToken || '');
-  const { data: performance, isLoading: loadingPerf } = usePortfolioPerformance(accessToken || '');
+  const theme = useTheme();
+  const { data: allocation, isLoading: loadingAllocation } = useAssetAllocation(accessToken || "");
+  const { data: performance, isLoading: loadingPerformance } = usePortfolioPerformance(
+    accessToken || "",
+  );
 
   if (!accessToken) {
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
     return null;
   }
 
-  if (loadingAlloc || loadingPerf) {
+  if (loadingAllocation || loadingPerformance) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text className="mt-4 text-gray-600">{fa.common.loading}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={fa.common.loading} />
+      </GradientBackground>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
-      <View className="p-6">
-        <Text className="text-2xl font-bold text-gray-900 mb-6">{fa.investment.performance}</Text>
+    <GradientBackground>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHeader
+          title={fa.investment.performance}
+          subtitle="تحلیل تخصیص و بازدهی پرتفوی"
+          onBack={() => router.back()}
+        />
 
-        <View className="mb-8">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">{fa.investment.assetAllocation}</Text>
-          {allocation?.byAssetType?.length === 0 ? (
-            <Text className="text-gray-500">{fa.investment.noHoldings}</Text>
-          ) : (
-            allocation?.byAssetType?.map((item: any) => (
-              <View key={item.assetType} className="mb-3">
-                <View className="flex-row justify-between mb-1">
-                  <Text className="font-medium text-gray-900">{item.assetType}</Text>
-                  <Text className="text-gray-600">{item.percentage.toFixed(1)}%</Text>
-                </View>
-                <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <View
-                    className="h-2 bg-blue-600 rounded-full"
-                    style={{ width: `${Math.min(100, item.percentage)}%` }}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+            {fa.investment.assetAllocation}
+          </Text>
+          <GlassCard>
+            {allocation?.byAssetType?.length ? (
+              <View style={styles.progressList}>
+                {allocation.byAssetType.map((item) => (
+                  <View key={item.assetType} style={styles.progressItem}>
+                    <View style={styles.progressHeader}>
+                      <Text style={[styles.itemTitle, { color: theme.textPrimary }]}>
+                        {item.assetType}
+                      </Text>
+                      <Text style={[styles.itemValue, { color: theme.textSecondary }]}>
+                        {item.percentage.toFixed(1)}%
+                      </Text>
+                    </View>
+                    <ProgressBar progress={item.percentage} />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                {fa.investment.noHoldings}
+              </Text>
+            )}
+          </GlassCard>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+            {fa.investment.accountAllocation}
+          </Text>
+          <GlassCard>
+            {allocation?.byAccount?.length ? (
+              <DataList>
+                {allocation.byAccount.map((item) => (
+                  <DataRow
+                    key={item.accountId}
+                    label={item.accountId}
+                    value={
+                      <Text style={[styles.itemValue, { color: theme.textPrimary }]}>
+                        {item.percentage.toFixed(1)}%
+                      </Text>
+                    }
                   />
-                </View>
-              </View>
-            ))
-          )}
+                ))}
+              </DataList>
+            ) : (
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                {fa.investment.noHoldings}
+              </Text>
+            )}
+          </GlassCard>
         </View>
 
-        <View className="mb-8">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">{fa.investment.accountAllocation}</Text>
-          {allocation?.byAccount?.length === 0 ? (
-            <Text className="text-gray-500">{fa.investment.noHoldings}</Text>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+            {fa.investment.performance}
+          </Text>
+          {performance?.points?.length ? (
+            <View style={styles.list}>
+              {performance.points
+                .slice(-7)
+                .reverse()
+                .map((point) => {
+                  const isPositive = point.dailyChange >= 0;
+                  return (
+                    <GlassListCard key={point.date}>
+                      <DataList>
+                        <DataRow
+                          label={point.date}
+                          value={
+                            <MoneyText size="sm">
+                              {formatCurrency(point.totalValue, "USD")}
+                            </MoneyText>
+                          }
+                        />
+                        <DataRow
+                          label="بازدهی تجمعی"
+                          value={
+                            <MoneyText
+                              size="sm"
+                              tone={isPositive ? "positive" : "negative"}
+                            >
+                              {`${point.cumulativeReturn.toFixed(2)}%`}
+                            </MoneyText>
+                          }
+                        />
+                      </DataList>
+                    </GlassListCard>
+                  );
+                })}
+            </View>
           ) : (
-            allocation?.byAccount?.map((item: any) => (
-              <View key={item.accountId} className="flex-row justify-between py-2 border-b border-gray-100 last:border-0">
-                <Text className="font-medium text-gray-900">{item.accountId}</Text>
-                <Text className="text-gray-600">{item.percentage.toFixed(1)}%</Text>
-              </View>
-            ))
+            <GlassCard style={styles.emptyCard}>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                {fa.investment.noHoldings}
+              </Text>
+            </GlassCard>
           )}
         </View>
-
-        <View>
-          <Text className="text-lg font-semibold text-gray-900 mb-3">{fa.investment.performance}</Text>
-          {performance?.points?.length === 0 ? (
-            <Text className="text-gray-500">{fa.investment.noHoldings}</Text>
-          ) : (
-            performance?.points?.slice(-7).reverse().map((point: any) => (
-              <View key={point.date} className="flex-row justify-between py-2 border-b border-gray-100 last:border-0">
-                <Text className="text-gray-700">{point.date}</Text>
-                <View className="items-end">
-                  <Text className="font-medium text-gray-900">
-                    {formatCurrency(point.totalValue, 'USD')}
-                  </Text>
-                  <Text className={`text-xs ${point.dailyChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {point.dailyChange >= 0 ? '+' : ''}{point.cumulativeReturn.toFixed(2)}%
-                  </Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </GradientBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48 },
+  section: { marginTop: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 12 },
+  progressList: { gap: 16 },
+  progressItem: { gap: 8 },
+  progressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  list: { gap: 12 },
+  itemTitle: { fontSize: 15, fontWeight: "700" },
+  itemValue: { fontSize: 13.5, fontWeight: "700" },
+  emptyCard: { alignItems: "center", paddingVertical: 26 },
+  emptyText: { fontSize: 14, textAlign: "center" },
+});

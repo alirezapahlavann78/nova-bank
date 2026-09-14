@@ -1,17 +1,24 @@
-import { ScrollView, TextInput, Pressable, ActivityIndicator, Text } from 'react-native';
-import { useState } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '../../../hooks/useAuth';
-import { updateBudget } from '../../../services/budgets';
-import { useTranslation } from '../../../hooks/useTranslation';
+import { View, ScrollView, Text } from "react-native";
+import { useState } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import {
+  GlassView,
+  GlassForm,
+  GlassButton,
+  GlassInput,
+  GradientBackground,
+} from "../../../components/ui";
+import { useAuth } from "../../../hooks/useAuth";
+import { updateBudget } from "../../../services/budgets";
+import { useTranslation } from "../../../hooks/useTranslation";
 
 export default function EditBudgetScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { accessToken } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -28,37 +35,38 @@ export default function EditBudgetScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-4">
-      <Text className="text-xl font-bold text-gray-900 mb-4">{t('budget.budget')}</Text>
+    <GradientBackground>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="p-6">
+          <GlassView className="p-4 mb-6">
+            <Text className="text-xl font-bold text-gray-900 text-center">
+              {t("budget.budget")}
+            </Text>
+          </GlassView>
 
-      <Text className="text-gray-700 mb-1">{t('budget.amount')}</Text>
-      <TextInput
-        className="bg-white border border-gray-300 rounded-lg p-3 mb-4"
-        value={name}
-        onChangeText={setName}
-        placeholder={t('budget.budget')}
-      />
-
-      <Text className="text-gray-700 mb-1">{t('budget.amount')}</Text>
-      <TextInput
-        className="bg-white border border-gray-300 rounded-lg p-3 mb-4"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-        placeholder="0"
-      />
-
-      <Pressable
-        className="bg-blue-600 py-3 rounded-lg items-center mt-4"
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text className="text-white font-semibold">{t('common.save')}</Text>
-        )}
-      </Pressable>
-    </ScrollView>
+          <GlassForm
+            footer={
+              <GlassButton onPress={handleSubmit} disabled={loading} variant="primary">
+                {loading ? "در حال ذخیره..." : t("common.save")}
+              </GlassButton>
+            }
+          >
+            <GlassInput
+              label={t("budget.name")}
+              placeholder={t("budget.budget")}
+              value={name}
+              onChangeText={setName}
+            />
+            <GlassInput
+              label={t("budget.amount")}
+              placeholder="0"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+            />
+          </GlassForm>
+        </View>
+      </ScrollView>
+    </GradientBackground>
   );
 }

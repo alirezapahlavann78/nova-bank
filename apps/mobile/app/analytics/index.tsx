@@ -1,10 +1,26 @@
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  GradientBackground,
+  GlassCard,
+  BackButton,
+  SectionHeader,
+  StatCard,
+  ScreenState,
+} from '../../components/ui';
 import { useAuth } from '../../hooks/useAuth';
-import { useReportsOverview, useReportsTrends, useReportsCategoryBreakdown, useReportsBudgetPerformance, useReportsGoalProgress } from '../../hooks/useReports';
+import {
+  useReportsOverview,
+  useReportsTrends,
+  useReportsCategoryBreakdown,
+  useReportsBudgetPerformance,
+  useReportsGoalProgress,
+} from '../../hooks/useReports';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function AnalyticsScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { accessToken } = useAuth();
   const { data: overview, isLoading: overviewLoading } = useReportsOverview(accessToken || '');
   const { data: trends, isLoading: trendsLoading } = useReportsTrends(accessToken || '');
@@ -16,70 +32,97 @@ export default function AnalyticsScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={t('common.loading')} />
+      </GradientBackground>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-4">
-      <Text className="text-2xl font-bold text-gray-900 mb-4">{t('analytics.overview')}</Text>
+    <GradientBackground>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={{ padding: 24 }}>
+          <BackButton onPress={() => router.back()} />
 
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('analytics.income')}</Text>
-        <Text className="text-2xl font-bold text-green-600">{overview?.totalIncome ?? 0}</Text>
-      </View>
+          <GlassCard style={{ marginBottom: 16, alignItems: 'center', padding: 20 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#0b1020', textAlign: 'center' }}>
+              {t('analytics.overview')}
+            </Text>
+          </GlassCard>
 
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('analytics.expenses')}</Text>
-        <Text className="text-2xl font-bold text-red-600">{overview?.totalExpenses ?? 0}</Text>
-      </View>
-
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('analytics.netCashFlow')}</Text>
-        <Text className="text-2xl font-bold text-gray-900">{overview?.netCashFlow ?? 0}</Text>
-      </View>
-
-      <Text className="text-xl font-bold text-gray-900 mt-6 mb-2">{t('analytics.trends')}</Text>
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        {trends?.map((item: any, idx: number) => (
-          <View key={idx} className="flex-row justify-between py-1">
-            <Text className="text-gray-700">{item.period}</Text>
-            <Text className="text-gray-900 font-semibold">{item.netCashFlow}</Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+            <StatCard
+              label={t('analytics.income')}
+              value={String(overview?.totalIncome ?? 0)}
+              style={{ flex: 1 }}
+            />
+            <StatCard
+              label={t('analytics.expenses')}
+              value={String(overview?.totalExpenses ?? 0)}
+              style={{ flex: 1 }}
+            />
+            <StatCard
+              label={t('analytics.netCashFlow')}
+              value={String(overview?.netCashFlow ?? 0)}
+              style={{ flex: 1 }}
+            />
           </View>
-        ))}
-      </View>
 
-      <Text className="text-xl font-bold text-gray-900 mt-6 mb-2">{t('analytics.categories')}</Text>
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        {breakdown?.map((item: any, idx: number) => (
-          <View key={idx} className="flex-row justify-between py-1">
-            <Text className="text-gray-700">{item.category?.name || item.category?.nameEn || '-'}</Text>
-            <Text className="text-gray-900 font-semibold">{item.amount}</Text>
+          <View style={{ marginBottom: 24 }}>
+            <SectionHeader title={t('analytics.trends')} />
+            <GlassCard>
+              {trends?.map((item: any, idx: number) => (
+                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
+                  <Text style={{ color: '#64748b' }}>{item.period}</Text>
+                  <Text style={{ color: '#0b1020', fontWeight: '600' }}>{item.netCashFlow}</Text>
+                </View>
+              ))}
+            </GlassCard>
           </View>
-        ))}
-      </View>
 
-      <Text className="text-xl font-bold text-gray-900 mt-6 mb-2">{t('analytics.budgetPerformance')}</Text>
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        {budgetPerformance?.map((item: any, idx: number) => (
-          <View key={idx} className="py-1">
-            <Text className="text-gray-700">{item.budget.name}</Text>
-            <Text className="text-gray-900 font-semibold">{Math.round(item.percentageUsed)}%</Text>
+          <View style={{ marginBottom: 24 }}>
+            <SectionHeader title={t('analytics.categories')} />
+            <GlassCard>
+              {breakdown?.map((item: any, idx: number) => (
+                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
+                  <Text style={{ color: '#64748b' }}>
+                    {item.category?.name || item.category?.nameEn || '-'}
+                  </Text>
+                  <Text style={{ color: '#0b1020', fontWeight: '600' }}>{item.amount}</Text>
+                </View>
+              ))}
+            </GlassCard>
           </View>
-        ))}
-      </View>
 
-      <Text className="text-xl font-bold text-gray-900 mt-6 mb-2">{t('analytics.goalProgress')}</Text>
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        {goalProgress?.map((item: any, idx: number) => (
-          <View key={idx} className="py-1">
-            <Text className="text-gray-700">{item.goal.name}</Text>
-            <Text className="text-gray-900 font-semibold">{Math.round(item.percentageComplete)}%</Text>
+          <View style={{ marginBottom: 24 }}>
+            <SectionHeader title={t('analytics.budgetPerformance')} />
+            <GlassCard>
+              {budgetPerformance?.map((item: any, idx: number) => (
+                <View key={idx} style={{ paddingVertical: 8 }}>
+                  <Text style={{ color: '#64748b' }}>{item.budget.name}</Text>
+                  <Text style={{ color: '#0b1020', fontWeight: '600', marginTop: 4 }}>
+                    {Math.round(item.percentageUsed)}%
+                  </Text>
+                </View>
+              ))}
+            </GlassCard>
           </View>
-        ))}
-      </View>
-    </ScrollView>
+
+          <View style={{ marginBottom: 24 }}>
+            <SectionHeader title={t('analytics.goalProgress')} />
+            <GlassCard>
+              {goalProgress?.map((item: any, idx: number) => (
+                <View key={idx} style={{ paddingVertical: 8 }}>
+                  <Text style={{ color: '#64748b' }}>{item.goal.name}</Text>
+                  <Text style={{ color: '#0b1020', fontWeight: '600', marginTop: 4 }}>
+                    {Math.round(item.percentageComplete)}%
+                  </Text>
+                </View>
+              ))}
+            </GlassCard>
+          </View>
+        </View>
+      </ScrollView>
+    </GradientBackground>
   );
 }

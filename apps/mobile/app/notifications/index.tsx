@@ -1,5 +1,11 @@
-import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
+import {
+  GradientBackground,
+  GlassCard,
+  BackButton,
+  ScreenState,
+} from '../../components/ui';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -31,49 +37,51 @@ export default function NotificationsScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={t('common.loading')} />
+      </GradientBackground>
     );
   }
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-red-600">{t('common.error')}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="error" title={t('common.error')} />
+      </GradientBackground>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id}
-        contentContainerClassName="p-4"
-        ListEmptyComponent={
-          <View className="items-center justify-center py-12">
-            <Text className="text-gray-500">{t('notification.notifications')} {t('common.loading').toLowerCase()}</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            className={`bg-white rounded-xl p-4 mb-3 shadow-sm ${!item.isRead ? 'border-l-4 border-blue-500' : ''}`}
-            onPress={() => router.push(`/notifications/${item.id}`)}
-          >
-            <View className="flex-row items-start">
-              <Text className="text-2xl mr-3">{renderNotificationIcon(item.type)}</Text>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">{item.title}</Text>
-                <Text className="text-sm text-gray-600 mt-1">{item.body}</Text>
-                <Text className="text-xs text-gray-400 mt-2">
-                  {new Date(item.createdAt).toLocaleString('fa-IR')}
+    <GradientBackground>
+      <View style={{ flex: 1, padding: 24, paddingBottom: 100 }}>
+        <BackButton onPress={() => router.back()} />
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingTop: 8 }}
+          ListEmptyComponent={() => (
+            <GlassCard style={{ alignItems: 'center', padding: 32 }}>
+              <Text style={{ color: '#64748b' }}>{t('notification.notifications')}</Text>
+            </GlassCard>
+          )}
+          renderItem={({ item }) => (
+            <GlassCard style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                <Text style={{ fontSize: 24, marginRight: 12 }}>
+                  {renderNotificationIcon(item.type)}
                 </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#0b1020' }}>{item.title}</Text>
+                  <Text style={{ fontSize: 14, color: '#64748b', marginTop: 6 }}>{item.body}</Text>
+                  <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
+                    {new Date(item.createdAt).toLocaleString('fa-IR')}
+                  </Text>
+                </View>
               </View>
-            </View>
-          </Pressable>
-        )}
-      />
-    </View>
+            </GlassCard>
+          )}
+        />
+      </View>
+    </GradientBackground>
   );
 }

@@ -1,63 +1,73 @@
-import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../hooks/useAuth';
-import { useGoals } from '../../hooks/useGoals';
-import { useTranslation } from '../../hooks/useTranslation';
+import { View, Text, FlatList } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
+import {
+  GlassIconButton,
+  GlassListCard,
+  GradientBackground,
+  ScreenState,
+} from "../../components/ui";
+import { useAuth } from "../../hooks/useAuth";
+import { useGoals } from "../../hooks/useGoals";
+import { useTranslation } from "../../hooks/useTranslation";
 
 export default function GoalsScreen() {
   const { t } = useTranslation();
   const { accessToken } = useAuth();
-  const { data: goals, isLoading, error } = useGoals(accessToken || '');
+  const { data: goals, isLoading, error, refetch } = useGoals(accessToken || "");
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={t("common.loading")} />
+      </GradientBackground>
     );
   }
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-red-600">{t('common.error')}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="error" title={t("common.error")} />
+      </GradientBackground>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <GradientBackground>
       <FlatList
         data={goals}
         keyExtractor={(item) => item.id}
         contentContainerClassName="p-4"
-        ListEmptyComponent={
-          <View className="items-center justify-center py-12">
-            <Text className="text-gray-500">{t('goal.goal')} {t('common.loading').toLowerCase()}</Text>
-          </View>
-        }
+        ListEmptyComponent={<ScreenState state="empty" message={t("goal.goal")} />}
         renderItem={({ item }) => (
-          <Pressable
-            className="bg-white rounded-xl p-4 mb-3 shadow-sm"
-            onPress={() => router.push(`/goals/${item.id}`)}
-          >
+          <GlassListCard className="mb-3">
             <Text className="text-lg font-bold text-gray-900">{item.name}</Text>
             <View className="flex-row justify-between mt-2">
-              <Text className="text-gray-600">{t('goal.target')}: {item.targetAmount}</Text>
-              <Text className={`font-semibold ${item.isCompleted ? 'text-green-600' : 'text-blue-600'}`}>
+              <Text className="text-gray-600">
+                {t("goal.target")}: {item.targetAmount}
+              </Text>
+              <Text
+                className={`font-semibold ${item.isCompleted ? "text-green-400" : "text-blue-400"}`}
+              >
                 {Math.round(item.percentageComplete)}%
               </Text>
             </View>
-          </Pressable>
+          </GlassListCard>
         )}
       />
-      <Pressable
-        className="absolute bottom-6 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        onPress={() => router.push('/goals/new')}
-      >
-        <Text className="text-white text-2xl font-bold">+</Text>
-      </Pressable>
-    </View>
+      <GlassIconButton
+        icon="add"
+        size={56}
+        className="absolute bottom-6 right-6"
+        onPress={() => router.push("/goals/new")}
+      />
+    </GradientBackground>
   );
 }

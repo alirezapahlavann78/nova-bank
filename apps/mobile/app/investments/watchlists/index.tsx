@@ -1,135 +1,195 @@
-import { View, Text, ScrollView, ActivityIndicator, Pressable, TextInput } from 'react-native';
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../../hooks/useAuth';
-import { useWatchlists } from '../../../hooks/useInvestments';
-import { fa } from '../../../localization';
-import { formatCurrency } from '../../../utils/format';
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { useRouter } from "expo-router";
+import {
+  DataList,
+  DataRow,
+  GlassButton,
+  GlassForm,
+  GlassIconButton,
+  GlassInput,
+  GlassListCard,
+  GradientBackground,
+  MoneyText,
+  ScreenHeader,
+  ScreenState,
+  StatusPill,
+} from "../../../components/ui";
+import { useAuth } from "../../../hooks/useAuth";
+import { useWatchlists } from "../../../hooks/useInvestments";
+import { createWatchlist } from "../../../services/investments";
+import { useTheme } from "../../../theme";
+import { fa } from "../../../localization";
+import { formatCurrency } from "../../../utils/format";
 
 export default function WatchlistsScreen() {
   const { accessToken } = useAuth();
   const router = useRouter();
-  const { data, isLoading, error } = useWatchlists(accessToken || '');
+  const theme = useTheme();
+  const { data, isLoading, error, refetch } = useWatchlists(accessToken || "");
   const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleCreateWatchlist = () => {
-    setCreating(false);
-    setNewName('');
+  const handleCreateWatchlist = async () => {
+    if (!accessToken || !newName.trim()) return;
+    setSaving(true);
+    try {
+      await createWatchlist(accessToken, { name: newName.trim() });
+      setNewName("");
+      setCreating(false);
+      await refetch();
+    } catch (createError) {
+      const message = createError instanceof Error ? createError.message : "ثبت دیده‌بان انجام نشد";
+      Alert.alert(fa.common.error, message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!accessToken) {
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
     return null;
   }
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text className="mt-4 text-gray-600">{fa.common.loading}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={fa.common.loading} />
+      </GradientBackground>
     );
   }
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <Text className="text-red-600">{fa.common.error}: {error.message}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="error" title={fa.common.error} message={error.message} />
+      </GradientBackground>
     );
   }
 
   const watchlists = data?.data || [];
 
-  if (watchlists.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center bg-gray-50 p-6">
-        {creating ? (
-          <View className="w-64 mb-4">
-            <Text className="text-sm text-gray-500 mb-2">{fa.investment.createWatchlist}</Text>
-            <Pressable
-              onPress={handleCreateWatchlist}
-              className="bg-blue-600 px-6 py-3 rounded-lg mt-2"
-            >
-              <Text className="text-white font-semibold">{fa.common.save}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <Text className="text-gray-500 text-center mb-4">{fa.investment.noWatchlists}</Text>
-            <Pressable
-              onPress={() => setCreating(true)}
-              className="bg-blue-600 px-6 py-3 rounded-lg"
-            >
-              <Text className="text-white font-semibold">{fa.investment.createWatchlist}</Text>
-            </Pressable>
-          </>
-        )}
-      </View>
-    );
-  }
-
   return (
-    <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
-      <View className="p-4">
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-xl font-bold text-gray-900">{fa.investment.watchlists}</Text>
-          <Pressable
-            onPress={() => setCreating(true)}
-            className="bg-blue-600 px-4 py-2 rounded-lg"
-          >
-            <Text className="text-white font-semibold">+</Text>
-          </Pressable>
-        </View>
+    <GradientBackground>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHeader
+          title={fa.investment.watchlists}
+          subtitle={`${watchlists.length} دیده‌بان`}
+          onBack={() => router.back()}
+          right={<GlassIconButton icon="add" onPress={() => setCreating(true)} size={40} />}
+        />
 
-        {creating && (
-          <View className="mb-4 p-4 bg-white rounded-lg shadow-sm">
-            <Text className="font-semibold text-gray-900 mb-2">{fa.investment.createWatchlist}</Text>
-            <TextInput
+        {creating ? (
+          <GlassForm
+            style={styles.createForm}
+            footer={
+              <GlassButton onPress={handleCreateWatchlist} disabled={saving}>
+                {saving ? "در حال ذخیره..." : fa.common.save}
+              </GlassButton>
+            }
+          >
+            <GlassInput
+              label={fa.investment.createWatchlist}
               value={newName}
-              onChangeText={setNewName}
+              onChangeText={(value: string) => setNewName(value)}
               placeholder={fa.investment.name}
-              className="border border-gray-300 rounded-lg px-3 py-2 mb-2"
             />
-            <Pressable
-              onPress={handleCreateWatchlist}
-              className="bg-blue-600 px-4 py-2 rounded-lg"
-            >
-              <Text className="text-white font-semibold text-center">{fa.common.save}</Text>
-            </Pressable>
+          </GlassForm>
+        ) : null}
+
+        {watchlists.length === 0 && !creating ? (
+          <ScreenState
+            state="empty"
+            message={fa.investment.noWatchlists}
+            action={fa.investment.createWatchlist}
+            onAction={() => setCreating(true)}
+          />
+        ) : (
+          <View style={styles.list}>
+            {watchlists.map((watchlist) => (
+              <GlassListCard key={watchlist.id} level={2}>
+                <View style={styles.header}>
+                  <View style={styles.titleWrap}>
+                    <Text style={[styles.title, { color: theme.textPrimary }]}>
+                      {watchlist.name}
+                    </Text>
+                    {watchlist.description ? (
+                      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                        {watchlist.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <StatusPill
+                    label={`${watchlist.items?.length ?? 0} نماد`}
+                    tone="info"
+                  />
+                </View>
+
+                {watchlist.items?.length ? (
+                  <DataList>
+                    {watchlist.items.map((item) => {
+                      const isPositive = item.dailyChange >= 0;
+                      return (
+                        <DataRow
+                          key={item.id}
+                          label={item.asset?.symbol || "نماد"}
+                          value={
+                            <View style={styles.itemValue}>
+                              <MoneyText size="sm">
+                                {item.currentPrice
+                                  ? formatCurrency(item.currentPrice, item.asset?.currency || "USD")
+                                  : "-"}
+                              </MoneyText>
+                              <Text
+                                style={[
+                                  styles.change,
+                                  { color: isPositive ? theme.success : theme.danger },
+                                ]}
+                              >
+                                {isPositive ? "+" : ""}
+                                {item.dailyChange.toFixed(2)}%
+                              </Text>
+                            </View>
+                          }
+                        />
+                      );
+                    })}
+                  </DataList>
+                ) : (
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    {fa.investment.noHoldings}
+                  </Text>
+                )}
+              </GlassListCard>
+            ))}
           </View>
         )}
-
-        {watchlists.map((wl: any) => (
-          <View key={wl.id} className="bg-white rounded-lg p-4 shadow-sm mb-3">
-            <Text className="font-semibold text-gray-900 text-lg">{wl.name}</Text>
-            {wl.description && <Text className="text-sm text-gray-500 mt-1">{wl.description}</Text>}
-            <View className="mt-3">
-              {wl.items?.length === 0 ? (
-                <Text className="text-xs text-gray-400">{fa.investment.noHoldings}</Text>
-              ) : (
-                wl.items?.map((item: any) => (
-                  <View key={item.id} className="flex-row justify-between py-2 border-b border-gray-100 last:border-0">
-                    <View>
-                      <Text className="font-medium text-gray-900">{item.asset?.symbol}</Text>
-                      <Text className="text-xs text-gray-500">{item.asset?.name}</Text>
-                    </View>
-                    <View className="items-end">
-                      <Text className="font-medium text-gray-900">
-                        {item.currentPrice !== null ? formatCurrency(item.currentPrice, item.asset?.currency || 'USD') : '-'}
-                      </Text>
-                      <Text className={`text-xs ${item.dailyChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {item.dailyChange >= 0 ? '+' : ''}{item.dailyChange.toFixed(2)}%
-                      </Text>
-                    </View>
-                  </View>
-                ))
-              )}
-            </View>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </GradientBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48 },
+  createForm: { marginBottom: 16 },
+  list: { gap: 14 },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  titleWrap: { flex: 1, gap: 4 },
+  title: { fontSize: 17, fontWeight: "800" },
+  subtitle: { fontSize: 13 },
+  itemValue: { alignItems: "flex-end", gap: 2 },
+  change: { fontSize: 12.5, fontWeight: "700" },
+  emptyText: { fontSize: 13.5, textAlign: "center" },
+});

@@ -1,85 +1,160 @@
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../../hooks/useAuth';
-import { useInvestmentTransactions } from '../../../hooks/useInvestments';
-import { fa } from '../../../localization';
-import { formatCurrency, formatJalaliDate } from '../../../utils/format';
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import {
+  DataList,
+  DataRow,
+  GlassListCard,
+  GradientBackground,
+  MoneyText,
+  ScreenHeader,
+  ScreenState,
+  StatusPill,
+} from "../../../components/ui";
+import { useAuth } from "../../../hooks/useAuth";
+import { useInvestmentTransactions } from "../../../hooks/useInvestments";
+import { useTheme } from "../../../theme";
+import { fa } from "../../../localization";
+import { formatCurrency, formatJalaliDate } from "../../../utils/format";
+
+const POSITIVE_TYPES = new Set(["BUY", "DEPOSIT", "DIVIDEND", "INTEREST"]);
+const NEGATIVE_TYPES = new Set(["SELL", "WITHDRAWAL", "FEE"]);
+
+const TYPE_LABELS: Record<string, string> = {
+  BUY: "خرید",
+  SELL: "فروش",
+  DEPOSIT: "واریز",
+  WITHDRAWAL: "برداشت",
+  DIVIDEND: "سود سهام",
+  INTEREST: "بهره",
+  FEE: "کارمزد",
+};
 
 export default function InvestmentTransactionsScreen() {
   const { accessToken } = useAuth();
   const router = useRouter();
-  const { data, isLoading, error } = useInvestmentTransactions(accessToken || '');
+  const theme = useTheme();
+  const { data, isLoading, error } = useInvestmentTransactions(accessToken || "");
 
   if (!accessToken) {
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
     return null;
   }
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text className="mt-4 text-gray-600">{fa.common.loading}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={fa.common.loading} />
+      </GradientBackground>
     );
   }
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <Text className="text-red-600">{fa.common.error}: {error.message}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="error" title={fa.common.error} message={error.message} />
+      </GradientBackground>
     );
   }
 
   const transactions = data?.data || [];
 
-  if (transactions.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center bg-gray-50 p-6">
-        <Text className="text-gray-500 text-center">{fa.investment.noTransactions}</Text>
-      </View>
-    );
-  }
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'BUY':
-      case 'DEPOSIT':
-      case 'DIVIDEND':
-      case 'INTEREST':
-        return 'text-green-600';
-      case 'SELL':
-      case 'WITHDRAWAL':
-      case 'FEE':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
   return (
-    <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
-      <View className="p-4">
-        <Text className="text-xl font-bold text-gray-900 mb-4">{fa.investment.transactions}</Text>
-        {transactions.map((tx: any) => (
-          <View key={tx.id} className="bg-white rounded-lg p-4 shadow-sm mb-3">
-            <View className="flex-row justify-between items-start">
-              <View>
-                <Text className="font-semibold text-gray-900">{tx.asset?.symbol || tx.transactionType}</Text>
-                {tx.asset?.name && <Text className="text-sm text-gray-500">{tx.asset.name}</Text>}
-                <Text className="text-xs text-gray-400 mt-1">{formatJalaliDate(tx.transactionDate)}</Text>
-              </View>
-              <View className="items-end">
-                <Text className={`font-semibold ${getTypeColor(tx.transactionType)}`}>
-                  {formatCurrency(tx.amount, tx.currency)}
-                </Text>
-                <Text className="text-xs text-gray-500 mt-1">{tx.transactionType}</Text>
-              </View>
-            </View>
+    <GradientBackground>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHeader
+          title={fa.investment.transactions}
+          subtitle={`${transactions.length} تراکنش`}
+          onBack={() => router.back()}
+        />
+
+        {transactions.length === 0 ? (
+          <ScreenState state="empty" message={fa.investment.noTransactions} />
+        ) : (
+          <View style={styles.list}>
+            {transactions.map((transaction) => {
+              const tone = POSITIVE_TYPES.has(transaction.transactionType)
+                ? "positive"
+                : NEGATIVE_TYPES.has(transaction.transactionType)
+                  ? "negative"
+                  : "neutral";
+
+              return (
+                <GlassListCard key={transaction.id} level={2}>
+                  <View style={styles.header}>
+                    <View style={styles.titleWrap}>
+                      <Text style={[styles.title, { color: theme.textPrimary }]}>
+                        {transaction.asset?.symbol || TYPE_LABELS[transaction.transactionType] || transaction.transactionType}
+                      </Text>
+                      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                        {formatJalaliDate(transaction.transactionDate)}
+                      </Text>
+                    </View>
+                    <MoneyText
+                      size="sm"
+                      tone={tone === "positive" ? "positive" : tone === "negative" ? "negative" : "default"}
+                    >
+                      {formatCurrency(transaction.amount, transaction.currency)}
+                    </MoneyText>
+                  </View>
+
+                  <DataList>
+                    <DataRow
+                      label="نوع تراکنش"
+                      value={
+                        <StatusPill
+                          label={TYPE_LABELS[transaction.transactionType] || transaction.transactionType}
+                          tone={tone}
+                        />
+                      }
+                    />
+                    {transaction.quantity ? (
+                      <DataRow
+                        label={fa.investment.quantity}
+                        value={
+                          <Text style={[styles.value, { color: theme.textPrimary }]}>
+                            {transaction.quantity}
+                          </Text>
+                        }
+                      />
+                    ) : null}
+                    {transaction.price ? (
+                      <DataRow
+                        label="قیمت واحد"
+                        value={
+                          <MoneyText size="sm">
+                            {formatCurrency(transaction.price, transaction.currency)}
+                          </MoneyText>
+                        }
+                      />
+                    ) : null}
+                  </DataList>
+                </GlassListCard>
+              );
+            })}
           </View>
-        ))}
-      </View>
-    </ScrollView>
+        )}
+      </ScrollView>
+    </GradientBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48 },
+  list: { gap: 14 },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 14,
+  },
+  titleWrap: { flex: 1, gap: 4 },
+  title: { fontSize: 17, fontWeight: "800" },
+  subtitle: { fontSize: 13 },
+  value: { fontSize: 13.5, fontWeight: "700" },
+});

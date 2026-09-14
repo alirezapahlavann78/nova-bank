@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   getInvestmentAccounts,
   getInvestmentAccount,
@@ -137,15 +137,23 @@ export function useWatchlists(accessToken: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchWatchlists = useCallback(async () => {
     if (!accessToken) return;
-    getWatchlists(accessToken)
-      .then(setData)
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+    setIsLoading(true);
+    try {
+      setData(await getWatchlists(accessToken));
+    } catch (fetchError) {
+      setError(fetchError as Error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [accessToken]);
 
-  return { data, isLoading, error };
+  useEffect(() => {
+    void fetchWatchlists();
+  }, [fetchWatchlists]);
+
+  return { data, isLoading, error, refetch: fetchWatchlists };
 }
 
 export function useWatchlist(accessToken: string, id: string) {

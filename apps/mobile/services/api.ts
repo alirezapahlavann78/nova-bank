@@ -1,9 +1,23 @@
-const API_BASE_URL = __DEV__
-  ? 'http://localhost:3000/api/v1'
-  : 'https://api.novabank.app/api/v1';
-
 export const ACCESS_TOKEN_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
+
+export function getApiBaseUrl(): string {
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '');
+
+  if (!apiUrl) {
+    throw new Error('EXPO_PUBLIC_API_URL is not configured');
+  }
+
+  if (!/^https?:\/\//i.test(apiUrl)) {
+    throw new Error('EXPO_PUBLIC_API_URL must be an absolute HTTP or HTTPS URL');
+  }
+
+  return apiUrl;
+}
+
+export function createIdempotencyKey(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
 
 export type ApiError = {
   error: {
@@ -50,16 +64,21 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
     ...options,
     headers,
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: { code: 'UNKNOWN_ERROR', message: 'An unexpected error occurred' },
-    }));
-    throw new Error(error.error.message);
+    const body = await response.json().catch(() => null);
+    // Support both API formats: {error:{message}} and Nest's {message, error, statusCode}
+    const message: string =
+      body?.error?.message ??
+      (Array.isArray(body?.message) ? body.message.join('؛ ') : body?.message) ??
+      'خطای غیرمنتظره رخ داد';
+    const err = new Error(message) as Error & { statusCode?: number };
+    err.statusCode = body?.statusCode ?? response.status;
+    throw err;
   }
 
   if (response.status === 204) {
@@ -80,8 +99,20 @@ export async function postWithAuth<T>(
   endpoint: string,
   body: unknown,
   accessToken: string,
+  additionalHeaders: Record<string, string> = {},
 ): Promise<T> {
-  return request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) }, accessToken);
+  return request<T>(
+    endpoint,
+    { method: 'POST', body: JSON.stringify(body), headers: additionalHeaders },
+    accessToken,
+  );
+}
+
+export async function deleteWithAuth<T>(
+  endpoint: string,
+  accessToken: string,
+): Promise<T> {
+  return request<T>(endpoint, { method: 'DELETE' }, accessToken);
 }
 
 export async function patchWithAuth<T>(

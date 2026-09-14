@@ -94,7 +94,13 @@ export async function createPayment(accessToken: string, data: {
   fees?: number;
   idempotencyKey?: string;
 }): Promise<PaymentSummaryResponse> {
-  return postWithAuth<PaymentSummaryResponse>('/payments', data, accessToken);
+  const { idempotencyKey, ...payment } = data;
+  return postWithAuth<PaymentSummaryResponse>(
+    '/payments',
+    payment,
+    accessToken,
+    idempotencyKey ? { 'idempotency-key': idempotencyKey } : {},
+  );
 }
 
 export async function cancelPayment(accessToken: string, id: string): Promise<ApiResponse> {
@@ -114,7 +120,7 @@ export interface PaymentAuditResponse {
 }
 
 export async function getPaymentAudit(accessToken: string, id: string): Promise<PaymentAuditResponse[]> {
-  return getWithAuth<PaymentAuditResponse>(`/payments/${id}/audit`, accessToken);
+  return getWithAuth<PaymentAuditResponse[]>(`/payments/${id}/audit`, accessToken);
 }
 
 export async function getBeneficiaries(accessToken: string): Promise<BeneficiarySummaryResponse[]> {

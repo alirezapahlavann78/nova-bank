@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from './token.service';
 
@@ -51,26 +51,29 @@ export class SessionService {
     });
   }
 
-  async rotateRefreshToken(oldRefreshToken: string, newHash: string) {
+  async rotateRefreshToken(oldRefreshToken: string) {
     const oldHash = await this.tokenService.hashRefreshToken(oldRefreshToken);
     const session = await this.findByRefreshTokenHash(oldHash);
     if (!session) {
-      throw new Error('Invalid refresh token');
+      // Reused, revoked or simply unknown token — never leak internals.
+      throw new UnauthorizedException('Invalid refresh token');
     }
+
+    // A rotation must produce a NEW token/hash — reusing the old hash
+    // violates the `refreshTokenHash` unique constraint.
+    const newRefreshToken = this.tokenService.generateRefreshToken();
+    const newHash = await this.tokenService.hashRefreshToken(newRefreshToken);
 
     const newExpiresAt = new Date();
     newExpiresAt.setDate(newExpiresAt.getDate() + 30);
 
+    // Revoke the old session first so the same token can never be reused.
     await this.prisma.session.update({
       where: { id: session.id },
-      data: {
-        refreshTokenHash: newHash,
-        expiresAt: newExpiresAt,
-        revokedAt: new Date(),
-      },
+      data: { revokedAt: new Date() },
     });
 
-    return this.prisma.session.create({
+    const fresh = await this.prisma.session.create({
       data: {
         userId: session.userId,
         refreshTokenHash: newHash,
@@ -79,5 +82,7 @@ export class SessionService {
       },
       include: { device: true },
     });
+
+    return { ...fresh, refreshToken: newRefreshToken };
   }
 }

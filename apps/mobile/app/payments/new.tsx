@@ -1,14 +1,28 @@
-import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  GradientBackground,
+  GlassCard,
+  GlassInput,
+  PrimaryButton,
+  BackButton,
+  SectionHeader,
+} from '../../components/ui';
 import { useAuth } from '../../hooks/useAuth';
-import { createPayment, PaymentSummaryResponse } from '../../services/payments';
-import { fa } from '../../localization';
+import { useTheme, accent } from '../../theme';
+import { createPayment } from '../../services/payments';
+import { createIdempotencyKey } from '../../services/api';
 
 export default function NewPaymentScreen() {
   const { accessToken } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const idempotencyKeyRef = useRef<string | null>(null);
   const [form, setForm] = useState({
     type: 'DOMESTIC_TRANSFER',
     amount: '',
@@ -25,7 +39,8 @@ export default function NewPaymentScreen() {
     if (!accessToken) return;
     setIsSubmitting(true);
     try {
-      const response = await createPayment(accessToken, {
+      idempotencyKeyRef.current ??= createIdempotencyKey('payment');
+      await createPayment(accessToken, {
         type: form.type,
         amount: Number(form.amount),
         currency: form.currency,
@@ -35,8 +50,9 @@ export default function NewPaymentScreen() {
         destinationName: form.destinationName || undefined,
         description: form.description || undefined,
         fees: Number(form.fees),
+        idempotencyKey: idempotencyKeyRef.current,
       });
-      Alert.show?.('پرداخت با موفقیت انجام شد');
+      Alert.alert('موفقیت', 'پرداخت با موفقیت انجام شد');
       router.replace('/payments');
     } catch (error) {
       Alert.alert('خطا', error instanceof Error ? error.message : 'خطای نامعلوم');
@@ -45,75 +61,138 @@ export default function NewPaymentScreen() {
     }
   };
 
+  const update = (key: keyof typeof form, value: string) => {
+    idempotencyKeyRef.current = null;
+    setForm((f) => ({ ...f, [key]: value }));
+  };
+
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <View className="p-6">
-        <Text className="text-2xl font-bold text-gray-900 mb-6">{fa.payment.createPayment}</Text>
+    <GradientBackground>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingBottom: 120,
+          paddingHorizontal: 20,
+        }}
+      >
+        <BackButton onPress={() => router.back()} />
 
-        <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">{fa.payment.destinationType}</Text>
-          <TextInput
-            value={form.destinationType}
-            onChangeText={(text) => setForm({ ...form, destinationType: text.toUpperCase() })}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900"
-            placeholder="ACCOUNT"
-          />
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 99,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(255,255,255,0.55)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.45)',
+            }}
+          >
+            <Ionicons name="swap-horizontal" size={22} color={accent[500]} />
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: theme.textPrimary, marginTop: 12 }}>
+            ایجاد پرداخت
+          </Text>
+          <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 6 }}>
+            مقصد و مبلغ پرداخت را مشخص کنید
+          </Text>
         </View>
 
-        <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">{fa.payment.amount}</Text>
-          <TextInput
-            value={form.amount}
-            onChangeText={(text) => setForm({ ...form, amount: text })}
-            keyboardType="numeric"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900"
-            placeholder="0"
+        <GlassCard style={{ marginBottom: 16 }}>
+          <GlassInput
+            label="شناسه حساب مبدأ"
+            placeholder="UUID حساب مبدأ"
+            value={form.sourceAccountId}
+            onChangeText={(v: string) => update('sourceAccountId', v)}
           />
-        </View>
+        </GlassCard>
 
-        <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">{fa.payment.destinationValue}</Text>
-          <TextInput
-            value={form.destinationValue}
-            onChangeText={(text) => setForm({ ...form, destinationValue: text })}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900"
+        <GlassCard style={{ marginBottom: 16 }}>
+          <SectionHeader title="نوع مقصد" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['ACCOUNT', 'CARD', 'IBAN'].map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => update('destinationType', t)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                   borderColor: form.destinationType === t ? accent[500] : 'rgba(160,140,255,0.35)',
+                   backgroundColor: form.destinationType === t ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.70)',
+                }}
+              >
+                <Text
+                  style={{
+                    textAlign: 'center',
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: form.destinationType === t ? accent[500] : theme.textSecondary,
+                  }}
+                >
+                  {t}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </GlassCard>
+
+        <GlassCard style={{ marginBottom: 16 }}>
+          <GlassInput
+            label="مقدار مقصد"
             placeholder="شماره حساب یا کارت"
+            value={form.destinationValue}
+            onChangeText={(v: string) => update('destinationValue', v)}
           />
-        </View>
-
-        <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">{fa.payment.destinationName}</Text>
-          <TextInput
-            value={form.destinationName}
-            onChangeText={(text) => setForm({ ...form, destinationName: text })}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900"
+          <GlassInput
+            label="نام مقصد"
             placeholder="نام گیرنده"
+            value={form.destinationName}
+            onChangeText={(v: string) => update('destinationName', v)}
+            containerStyle={{ marginTop: 12 }}
           />
-        </View>
+        </GlassCard>
 
-        <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">{fa.payment.fees}</Text>
-          <TextInput
-            value={form.fees}
-            onChangeText={(text) => setForm({ ...form, fees: text })}
-            keyboardType="numeric"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900"
+        <GlassCard style={{ marginBottom: 16 }}>
+          <GlassInput
+            label="مبلغ"
             placeholder="0"
+            value={form.amount}
+            onChangeText={(v: string) => update('amount', v)}
+            keyboardType="numeric"
+          />
+          <GlassInput
+            label="کارکرد"
+            placeholder="0"
+            value={form.fees}
+            onChangeText={(v: string) => update('fees', v)}
+            keyboardType="numeric"
+            containerStyle={{ marginTop: 12 }}
+          />
+          <GlassInput
+            label="توضیحات"
+            placeholder="توضیح اختیاری"
+            value={form.description}
+            onChangeText={(v: string) => update('description', v)}
+            multiline
+            containerStyle={{ marginTop: 12 }}
+            style={{ minHeight: 88 }}
+          />
+        </GlassCard>
+
+        <View style={{ marginTop: 32 }}>
+          <PrimaryButton
+            label={isSubmitting ? 'در حال ارسال...' : 'ایجاد پرداخت'}
+            onPress={handleSubmit}
+            loading={isSubmitting}
+            disabled={!form.sourceAccountId || !form.destinationValue}
           />
         </View>
-
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={`rounded-lg py-4 items-center ${isSubmitting ? 'bg-gray-400' : 'bg-blue-600'}`}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-white font-semibold text-lg">{fa.payment.createPayment}</Text>
-          )}
-        </Pressable>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </GradientBackground>
   );
 }

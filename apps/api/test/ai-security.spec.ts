@@ -6,7 +6,7 @@ import { GoalsService } from '../src/goals/goals.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { ReportsService } from '../src/reports/reports.service';
 import { TransfersService } from '../src/transfers/transfers.service';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { CreditScoreService } from '../src/credit/credit-score.service';
 import { InvestmentAccountsService } from '../src/investments/investment-accounts.service';
 import { AssetsService } from '../src/investments/assets.service';
 import { HoldingsService } from '../src/investments/holdings.service';
@@ -17,13 +17,19 @@ import { PaymentsService } from '../src/payments/payments.service';
 import { BeneficiariesService } from '../src/beneficiaries/beneficiaries.service';
 import { PaymentTemplatesService } from '../src/payment-templates/payment-templates.service';
 import { ScheduledPaymentsService } from '../src/scheduled-payments/scheduled-payments.service';
+import { CreditProfileService } from '../src/credit/credit-profile.service';
+import { CreditEngineService } from '../src/credit/credit-engine.service';
+import { EligibilityEngineService } from '../src/credit/credit-eligibility.service';
+import { LoanProductsService } from '../src/lending/loan-products.service';
+import { LoanApplicationsService } from '../src/lending/loan-applications.service';
+import { LoansService } from '../src/lending/loans.service';
 import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 describe('ToolManager Security', () => {
   let service: ToolManagerService;
 
-  const mockPrisma = {};
+  const mockCreditScoreService = { getHistory: jest.fn() };
   const mockAccountsService = { findAll: jest.fn(), findOne: jest.fn() };
   const mockTransactionsService = { findAll: jest.fn() };
   const mockBudgetsService = { findAll: jest.fn(), create: jest.fn() };
@@ -50,12 +56,18 @@ describe('ToolManager Security', () => {
   const mockBeneficiariesService = { findAll: jest.fn() };
   const mockPaymentTemplatesService = { findAll: jest.fn() };
   const mockScheduledPaymentsService = { findAll: jest.fn() };
+  const mockCreditProfileService = { getProfile: jest.fn() };
+  const mockCreditEngineService = { getScore: jest.fn(), calculateScore: jest.fn() };
+  const mockEligibilityEngineService = { evaluateEligibility: jest.fn() };
+  const mockLoanProductsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn(), update: jest.fn(), remove: jest.fn() };
+  const mockLoanApplicationsService = { findAll: jest.fn(), findOne: jest.fn(), create: jest.fn(), submit: jest.fn(), approve: jest.fn(), reject: jest.fn() };
+  const mockLoansService = { findAll: jest.fn(), findOne: jest.fn(), activate: jest.fn(), makePayment: jest.fn() };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       providers: [
         ToolManagerService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: CreditScoreService, useValue: mockCreditScoreService },
         { provide: AccountsService, useValue: mockAccountsService },
         { provide: TransactionsService, useValue: mockTransactionsService },
         { provide: BudgetsService, useValue: mockBudgetsService },
@@ -73,6 +85,12 @@ describe('ToolManager Security', () => {
         { provide: BeneficiariesService, useValue: mockBeneficiariesService },
         { provide: PaymentTemplatesService, useValue: mockPaymentTemplatesService },
         { provide: ScheduledPaymentsService, useValue: mockScheduledPaymentsService },
+        { provide: CreditProfileService, useValue: mockCreditProfileService },
+        { provide: CreditEngineService, useValue: mockCreditEngineService },
+        { provide: EligibilityEngineService, useValue: mockEligibilityEngineService },
+        { provide: LoanProductsService, useValue: mockLoanProductsService },
+        { provide: LoanApplicationsService, useValue: mockLoanApplicationsService },
+        { provide: LoansService, useValue: mockLoansService },
       ],
     }).compile();
 

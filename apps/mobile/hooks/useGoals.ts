@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getGoals, getGoal, GoalSummaryResponse } from '../services/goals';
 
 export function useGoals(accessToken: string) {
@@ -6,15 +6,24 @@ export function useGoals(accessToken: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchGoals = useCallback(async () => {
     if (!accessToken) return;
-    getGoals(accessToken)
-      .then(setData)
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+    setIsLoading(true);
+    try {
+      setData(await getGoals(accessToken));
+      setError(null);
+    } catch (fetchError) {
+      setError(fetchError as Error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [accessToken]);
 
-  return { data, isLoading, error };
+  useEffect(() => {
+    void fetchGoals();
+  }, [fetchGoals]);
+
+  return { data, isLoading, error, refetch: fetchGoals };
 }
 
 export function useGoal(accessToken: string, id: string) {
@@ -22,13 +31,22 @@ export function useGoal(accessToken: string, id: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchGoal = useCallback(async () => {
     if (!accessToken || !id) return;
-    getGoal(accessToken, id)
-      .then(setData)
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+    setIsLoading(true);
+    try {
+      setData(await getGoal(accessToken, id));
+      setError(null);
+    } catch (fetchError) {
+      setError(fetchError as Error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [accessToken, id]);
 
-  return { data, isLoading, error };
+  useEffect(() => {
+    void fetchGoal();
+  }, [fetchGoal]);
+
+  return { data, isLoading, error, refetch: fetchGoal };
 }

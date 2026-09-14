@@ -1,80 +1,98 @@
-import { View, Text, ScrollView, ActivityIndicator, Pressable } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '../../hooks/useAuth';
-import { useGoal } from '../../hooks/useGoals';
-import { useTranslation } from '../../hooks/useTranslation';
+import { View, Text, ScrollView } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import {
+  GlassView,
+  GlassButton,
+  GradientBackground,
+  MoneyText,
+  ScreenState,
+} from "../../components/ui";
+import { useAuth } from "../../hooks/useAuth";
+import { useGoal } from "../../hooks/useGoals";
+import { addGoalProgress } from "../../services/goals";
+import { useTranslation } from "../../hooks/useTranslation";
 
 export default function GoalDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { accessToken } = useAuth();
-  const { data: goal, isLoading, error } = useGoal(accessToken || '', id);
+  const { data: goal, isLoading, error, refetch } = useGoal(accessToken || "", id || "");
   const router = useRouter();
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </View>
+      <GradientBackground>
+        <ScreenState state="loading" title={t("common.loading")} />
+      </GradientBackground>
     );
   }
 
   if (error || !goal) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-red-600">{t('common.error')}</Text>
-      </View>
+      <GradientBackground>
+        <ScreenState state="error" title={t("common.error")} />
+      </GradientBackground>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-4">
-      <Text className="text-2xl font-bold text-gray-900 mb-4">{goal.name}</Text>
+    <GradientBackground>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="p-6">
+          <GlassView className="p-4 mb-6">
+            <Text className="text-2xl font-bold text-gray-900 text-center">{goal.name}</Text>
+          </GlassView>
 
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('goal.target')}</Text>
-        <Text className="text-2xl font-bold text-gray-900">{goal.targetAmount}</Text>
-      </View>
+          <GlassView className="p-4 mb-3">
+            <Text className="text-gray-600 mb-1">{t("goal.target")}</Text>
+            <MoneyText>{goal.targetAmount}</MoneyText>
+          </GlassView>
 
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('goal.progress')}</Text>
-        <Text className="text-2xl font-bold text-gray-900">{goal.currentAmount}</Text>
-      </View>
+          <GlassView className="p-4 mb-3">
+            <Text className="text-gray-600 mb-1">{t("goal.progress")}</Text>
+            <MoneyText>{goal.currentAmount}</MoneyText>
+          </GlassView>
 
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('goal.remaining')}</Text>
-        <Text className="text-2xl font-bold text-gray-900">{goal.remaining}</Text>
-      </View>
+          <GlassView className="p-4 mb-3">
+            <Text className="text-gray-600 mb-1">{t("goal.remaining")}</Text>
+            <MoneyText>{goal.remaining}</MoneyText>
+          </GlassView>
 
-      <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-gray-600 mb-1">{t('goal.progress')} %</Text>
-        <Text className={`text-2xl font-bold ${goal.isCompleted ? 'text-green-600' : 'text-blue-600'}`}>
-          {Math.round(goal.percentageComplete)}%
-        </Text>
-      </View>
+          <GlassView className="p-4 mb-6">
+            <Text className="text-gray-600 mb-1">{t("goal.progress")} %</Text>
+            <Text
+              className={`text-2xl font-bold ${goal.isCompleted ? "text-green-400" : "text-blue-400"}`}
+            >
+              {Math.round(goal.percentageComplete)}%
+            </Text>
+          </GlassView>
 
-      <View className="flex-row gap-3 mt-4">
-        <Pressable
-          className="flex-1 bg-blue-600 py-3 rounded-lg items-center"
-          onPress={() => router.push(`/goals/${id}/edit`)}
-        >
-          <Text className="text-white font-semibold">{t('common.edit')}</Text>
-        </Pressable>
-        <Pressable
-          className="flex-1 bg-green-600 py-3 rounded-lg items-center"
-          onPress={async () => {
-            if (accessToken && id) {
-              await fetch(`/api/v1/goals/${id}/progress`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: 1000 }),
-              });
-            }
-          }}
-        >
-          <Text className="text-white font-semibold">{t('goal.progress')}</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+          <View className="flex-row gap-3">
+            <GlassButton
+              onPress={() => router.push(`/goals/${id}/edit`)}
+              variant="secondary"
+              className="flex-1"
+            >
+              {t("common.edit")}
+            </GlassButton>
+            <GlassButton
+              onPress={async () => {
+                if (!accessToken || !id) return;
+                try {
+                  await addGoalProgress(accessToken, id, 1000);
+                  await refetch();
+                } catch {
+                  // Keep the previously verified goal amount if progress fails.
+                }
+              }}
+              variant="primary"
+              className="flex-1"
+            >
+              {t("goal.progress")}
+            </GlassButton>
+          </View>
+        </View>
+      </ScrollView>
+    </GradientBackground>
   );
 }
